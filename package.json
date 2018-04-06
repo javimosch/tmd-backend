@@ -1,0 +1,28 @@
+{
+  "name": "tmd-dbgui",
+  "version": "1.0.0",
+  "main": "index.js",
+  "license": "MIT",
+  "scripts": {
+    "dev": "cross-env NODE_ENV=development nodemon --exec 'npx babel-node src/index.js' --ignore src/actions --watch src",
+    "start": "yarn build && node dist/index.js",
+    "build": "cross-env NODE_ENV=production babel src --ignore 'locales' --out-dir dist --copy-files"
+  },
+  "dependencies": {
+    "babel-cli": "^6.26.0",
+    "babel-polyfill": "^6.26.0",
+    "babel-preset-env": "^1.6.1",
+    "body-parser": "^1.18.2",
+    "cross-env": "^5.1.4",
+    "dotenv": "^5.0.1",
+    "express": "^4.16.3",
+    "mongo-express": "^0.46.1",
+    "mongoose": "^5.0.13",
+    "mongoose-paginate": "^5.0.3",
+    "nodemon": "^1.17.3",
+    "promise-sequential": "^1.1.1",
+    "require-from-string": "^2.0.1",
+    "sander": "^0.6.0",
+    "tracer": "^0.8.12"
+  }
+}
