@@ -1,4 +1,4 @@
 node_modules
 dist
-src/actions
+src/actions/*-temp*.js
 *-error.log

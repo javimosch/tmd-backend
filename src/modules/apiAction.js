@@ -1,11 +1,22 @@
-const console = require('tracer').colorConsole();
+import {
+	IS_PRODUCTION
+} from '../config';
 import db from './db';
 import * as sander from 'sander';
 import sequential from 'promise-sequential';
 import path from 'path';
 import * as babel from 'babel-core';
 
-var requireFromString = require('require-from-string');
+const console = require('tracer').colorConsole();
+var beautify = require('js-beautify').js_beautify;
+var errToJSON = require('error-to-json')
+
+
+var requireFromString = require('require-from-string','',[
+	//__dirname,
+	//path.join(__dirname,'..')
+	process.cwd()
+]);
 
 let state = {
 	docs: []
@@ -30,10 +41,10 @@ function sendBadActionImplementation(msg, res) {
 	});
 }
 
-function sendServerError(res) {
+function sendServerError(err, res) {
 	res.status(500).json({
 		data: null,
-		err: 'Server error',
+		err: 'Server error' + (!IS_PRODUCTION ? ': ' + JSON.stringify(errToJSON(err),null,2) : ''),
 	});
 }
 
@@ -45,22 +56,22 @@ export function handler() {
 		if (!payload.d) return sendBadParam('Action data required (d)', res);
 		if (typeof payload.d !== 'object') return sendBadParam('Action data type mismatch (object expected)', res);
 
-
-		console.log(state.docs[0].name, payload.n);
 		let doc = state.docs.filter(d => d.name == payload.n)[0];
 
 		if (!doc) return sendBadParam('Action mistmach: ' + payload.n, res);
 
 		let def = requireFromString(doc.compiledCode);
 
-		let p = def.default(payload.d);
+		let p = def.default.apply({
+			db
+		},[payload.d])
 		if (p && p.then && p.catch) {
 			(async () => {
 				let actionResponseData = await p;
 				sendSuccess(actionResponseData, res);
 			})().catch(err => {
 				console.log(err);
-				sendServerError(res)
+				sendServerError(err, res)
 			});
 
 		} else {
@@ -72,7 +83,7 @@ export function handler() {
 }
 
 export async function syncActions() {
-	await sander.rimraf(path.join(__dirname, '../actions/*.js'));
+	await sander.rimraf(path.join(__dirname, '../actions/temp/*.js'));
 	let ApiAction = db.conn().model('api_action');
 	let len = await ApiAction.count({}).exec();
 	if (len === 0) {
@@ -85,11 +96,43 @@ export default async function(data){
 			`
 		})
 	}
+
+	//Save or update actions from src/actions
+	let files = await sander.readdir(path.join(__dirname, '../actions'));
+	files = files.filter(f => f.indexOf('js') !== -1);
+	await sequential(files.map(f => {
+		return async () => {
+			let name = f.replace('.js', '');
+			let code = (await sander.readFile(path.join(__dirname, '../actions/' + f))).toString('utf-8');
+			let payload = {
+				name,
+				code,
+				protected:true
+			};
+			let doc = await ApiAction.find({
+				name:name
+			});
+			if (doc.length===0) {
+				await ApiAction.create(payload);
+			} else {
+				await ApiAction.update({
+					name: name
+				}, {
+					$set: {
+						code,
+						protected:true
+					}
+				}).exec();
+			}
+		};
+	}));
+
+
 	state.docs = await ApiAction.find({}).exec();
-	state.docs = state.docs.filter(d=>{
-		if(d.name.indexOf(' ')!==-1) return falseWithMessage('Action skip: ['+d.name+']');
-		if(d.name.indexOf('$')!==-1) return falseWithMessage('Action skip: ['+d.name+']');
-		if(d.name.indexOf('-')!==-1) return falseWithMessage('Action skip: ['+d.name+']');
+	state.docs = state.docs.filter(d => {
+		if (d.name.indexOf(' ') !== -1) return falseWithMessage('Action skip: [' + d.name + ']');
+		if (d.name.indexOf('$') !== -1) return falseWithMessage('Action skip: [' + d.name + ']');
+		if (d.name.indexOf('-') !== -1) return falseWithMessage('Action skip: [' + d.name + ']');
 		return true;
 	});
 	await sequential(state.docs.map(d => {
@@ -106,13 +149,13 @@ export default async function(data){
 				]
 			})).code;
 			d.compiledCode = code;
-			await sander.writeFile(path.join(__dirname, `../actions/${d.name}.js`), code);
+			await sander.writeFile(path.join(__dirname, `../actions/temp/_temp_${d.name}.js`), code);
 		}
 	}));
 	return;
 }
 
-function falseWithMessage(msg){
+function falseWithMessage(msg) {
 	console.log(msg);
 	return false;
 }

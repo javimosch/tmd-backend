@@ -8,6 +8,7 @@ require('dotenv').config({
 import "babel-polyfill";
 import {IS_PRODUCTION} from './config';
 import apiAction from './modules/apiAction';
+import morganBody from 'morgan-body';
 
 const express = require('express')
 const app = express()
@@ -22,9 +23,15 @@ var mongo_express_config = require('./config/mongoExpress');
 	await db.connect();
 	
 	await apiAction.syncActions();
+
+	var cors = require('cors')
+	app.use(cors())
 	
 	var bodyParser = require('body-parser')
 	app.use(bodyParser.json())
+
+	
+	morganBody(app);
 	
 	app.use('/rpc/*', apiAction.handler());
 	app.use('/', mongo_express(mongo_express_config))

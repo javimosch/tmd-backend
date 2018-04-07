@@ -2,7 +2,6 @@ const console = require('tracer').colorConsole();
 import { createPaginationMethod } from '../helpers/mongoPagination';
 var mongoosePaginate = require('mongoose-paginate');
 const mongoose = require('mongoose');
-
 const schema = new mongoose.Schema({
   name: {
     type: String,
@@ -16,6 +15,10 @@ const schema = new mongoose.Schema({
   },
   compiledCode:{
   	type:String
+  },
+  protected:{
+    type:Boolean,
+    default:false
   }
 }, {
   timestamps: true,

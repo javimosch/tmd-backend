@@ -8,7 +8,12 @@ const userSchema = new mongoose.Schema({
     required: true,
     unique: true,
     index: true
-  }
+  },
+  code: {
+  	type:String,
+  	required:true,
+  	default:"{}"
+  },
 }, {
   timestamps: true,
   toObject: {}
@@ -22,5 +27,5 @@ userSchema.options.toObject.transform = function(doc, ret) {
 
 userSchema.statics.findPaginate = createPaginationMethod()
 userSchema.plugin(mongoosePaginate);
-const Field = mongoose.model('Field', userSchema);
+const Field = mongoose.model('field', userSchema);
 export default Field;

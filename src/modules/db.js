@@ -11,28 +11,33 @@ const URI = process.env.dbURI || process.env.ME_CONFIG_MONGODB_URL;
 var self = module.exports = {
 	connections: {},
 	connect: async () => {
-		console.log('Loading models');
 		await loadModels();
 		if (!URI) throw Error('dbURI required');
-		console.log('Loading mongoose connection');
 		await connectMongoose();
 	},
-	conn:()=> self.connections.default
+	conn: () => self.connections.default
 }
 
 function connectMongoose() {
 	return new Promise((resolve, reject) => {
-		var conn = mongoose.createConnection(URI);
-		conn.on('connected', () => {
-			console.log('Connected');
-			resolve();
-		});
-		conn.on('error', (err) => {
-			console.error(err);
-			reject();
-		});
-		conn.on('disconnected', () => {});
-		self.connections.default = conn;
+		(async () => {
+			var conn = mongoose.createConnection(URI);
+			self.connections.default = conn;
+			
+			Object.keys(mongoose.models).forEach(modelName=>{
+				conn.model(modelName,mongoose.models[modelName].schema);
+			})
+
+			conn.on('connected', () => {
+				console.log('Connected');
+				resolve();
+			});
+			conn.on('error', (err) => {
+				console.error(err);
+				reject();
+			});
+			conn.on('disconnected', () => {});
+		})().catch(reject);
 	});
 }
 
