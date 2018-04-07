@@ -3,7 +3,7 @@ export default async function(data){
 	let Model = db.conn().model('field');
 	let doc = null;
 	if(data._id){
-		await Model.findById(data._id).exec();
+		doc = await Model.findById(data._id).exec();
 	}
 	delete data._id;
 	if(!doc){
