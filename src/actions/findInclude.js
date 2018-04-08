@@ -5,12 +5,16 @@ export default async function(data) {
 	let Model = db.conn().model(data.model);
 	let query = {};
 	if (data.value && data.fields) {
+		let $or = [];
 		data.fields.forEach(fieldName => {
-			query[fieldName] = {
+			let $orItem = {};
+			$orItem[fieldName] = {
 				$regex: new RegExp(data.value),
 				$options: 'i'
 			};
-		})
+			$or.push($orItem);
+		});
+		query.$or = $or;
 	}
 	return (await Model.find(query).exec()).map(d => {
 		let json = {};

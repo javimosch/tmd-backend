@@ -12,7 +12,7 @@ var beautify = require('js-beautify').js_beautify;
 var errToJSON = require('error-to-json')
 
 
-var requireFromString = require('require-from-string','',[
+var requireFromString = require('require-from-string', '', [
 	//__dirname,
 	//path.join(__dirname,'..')
 	process.cwd()
@@ -44,7 +44,7 @@ function sendBadActionImplementation(msg, res) {
 function sendServerError(err, res) {
 	res.status(500).json({
 		data: null,
-		err: 'Server error' + (!IS_PRODUCTION ? ': ' + JSON.stringify(errToJSON(err),null,2) : ''),
+		err: 'Server error' + (!IS_PRODUCTION ? ': ' + JSON.stringify(errToJSON(err), null, 2) : ''),
 	});
 }
 
@@ -64,7 +64,7 @@ export function handler() {
 
 		let p = def.default.apply({
 			db
-		},[payload.d])
+		}, [payload.d])
 		if (p && p.then && p.catch) {
 			(async () => {
 				let actionResponseData = await p;
@@ -97,35 +97,10 @@ export default async function(data){
 		})
 	}
 
-	//Save or update actions from src/actions
-	let files = await sander.readdir(path.join(__dirname, '../actions'));
-	files = files.filter(f => f.indexOf('js') !== -1);
-	await sequential(files.map(f => {
-		return async () => {
-			let name = f.replace('.js', '');
-			let code = (await sander.readFile(path.join(__dirname, '../actions/' + f))).toString('utf-8');
-			let payload = {
-				name,
-				code,
-				protected:true
-			};
-			let doc = await ApiAction.find({
-				name:name
-			});
-			if (doc.length===0) {
-				await ApiAction.create(payload);
-			} else {
-				await ApiAction.update({
-					name: name
-				}, {
-					$set: {
-						code,
-						protected:true
-					}
-				}).exec();
-			}
-		};
-	}));
+
+	if (!IS_PRODUCTION) {
+		await saveOrUpdateLocalActions(ApiAction);
+	}
 
 
 	state.docs = await ApiAction.find({}).exec();
@@ -153,6 +128,38 @@ export default async function(data){
 		}
 	}));
 	return;
+}
+
+async function saveOrUpdateLocalActions(ApiAction) {
+	//Save or update actions from src/actions
+	let files = await sander.readdir(path.join(__dirname, '../actions'));
+	files = files.filter(f => f.indexOf('js') !== -1);
+	await sequential(files.map(f => {
+		return async () => {
+			let name = f.replace('.js', '');
+			let code = (await sander.readFile(path.join(__dirname, '../actions/' + f))).toString('utf-8');
+			let payload = {
+				name,
+				code,
+				protected: true
+			};
+			let doc = await ApiAction.find({
+				name: name
+			});
+			if (doc.length === 0) {
+				await ApiAction.create(payload);
+			} else {
+				await ApiAction.update({
+					name: name
+				}, {
+					$set: {
+						code,
+						protected: true
+					}
+				}).exec();
+			}
+		};
+	}));
 }
 
 function falseWithMessage(msg) {
