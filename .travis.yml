@@ -1,0 +1,8 @@
+language: node_js
+node_js:
+ - "9.5"
+script:
+  - curl -G --request POST --url "https://api.trello.com/1/cards/tMJ8FJnx/actions/comments" --data-urlencode "text=New deployment commit **$TRAVIS_COMMIT_MESSAGE** (Automatic message)" --data-urlencode "key=93290e396fd879aff0da7214d0dc8789" --data-urlencode "token=be774d0f15194165ae6e64a71d16898643ec47c8028866ff42be88be52c429fb"
+branches:
+  only:
+  - master
