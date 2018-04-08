@@ -15,5 +15,6 @@ export default async function(data){
 			return null;
 		}
 	}
-	return (await Model.findOne(query).exec());
+	console.log('POPU',data.populate||[]);
+	return (await Model.findOne(query).populate(data.populate||[]).exec());
 }

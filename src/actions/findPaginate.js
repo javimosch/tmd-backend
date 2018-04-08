@@ -6,7 +6,7 @@ export default async function(data) {
 	if (!data.query) data.query = {};
 	if (!data.offset) data.offset = 0;
 	if (!data.limit) data.limit = 500;
-	let res = await Model.findPaginate(data.query, data.offset, data.limit);
+	let res = await Model.findPaginate(data.query, data.offset, data.limit,data.options||{});
 	let arr = res.docs;
 	return arr.map(d => {
 		d = d.toJSON();

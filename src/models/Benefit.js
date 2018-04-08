@@ -24,9 +24,18 @@ const userSchema = new mongoose.Schema({
     required: true,
     default: "{}"
   },
+  fields:[{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'field'
+  }]
 }, {
   timestamps: true,
-  toObject: {}
+  toObject: {},
+  toJSON: {
+    transform: function (doc, ret) {
+      return ret;
+    }
+  }
 });
 
 userSchema.options.toObject.transform = function(doc, ret) {

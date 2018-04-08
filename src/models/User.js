@@ -35,5 +35,5 @@ userSchema.statics.findByEmailRegExp = function(email) {
 
 userSchema.statics.findPaginate = createPaginationMethod()
 userSchema.plugin(mongoosePaginate);
-const User = mongoose.model('User', userSchema);
+const User = mongoose.model('user', userSchema);
 export default User;
