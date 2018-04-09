@@ -15,5 +15,5 @@ export default async function(data){
 			return null;
 		}
 	}
-	return (await Model.findOne(query).populate(data.populate||[]).exec());
+	return await Model.findOne(query).populate(data.populate||[]).exec();
 }

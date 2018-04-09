@@ -11,10 +11,22 @@ const userSchema = new mongoose.Schema({
   },
   role: {
     type: String,
-    enum: ['moderator', 'root'],
+    enum: ['normal', 'root'],
     required: true,
-    default: 'moderator'
-  }
+    default: 'normal'
+  },
+  chatMessages: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'chat_message'
+  }],
+  inputs: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'field_response'
+  },
+  orders:[{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'order'
+  }]
 }, {
   timestamps: true,
   toObject: {}

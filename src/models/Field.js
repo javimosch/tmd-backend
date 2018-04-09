@@ -34,10 +34,13 @@ const schema = new mongoose.Schema({
 schema.options.toObject.transform = function(doc, ret) {
   if (doc && doc.group && doc.group._id) {
     ret.groupName = doc.group.name;
-  } else {
-    ret.groupName = '(missing)'
   }
-  return ret;
+  try{
+    return Object.assign({},JSON.parse(doc.code),ret);
+  }catch(err){
+    return ret;
+  }
+  
 };
 
 schema.post('remove', function(doc, next) {
