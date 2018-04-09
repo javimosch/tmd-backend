@@ -44,7 +44,9 @@ function sendBadActionImplementation(msg, res) {
 function sendServerError(err, res) {
 	res.status(500).json({
 		data: null,
-		err: 'Server error' + (!IS_PRODUCTION ? ': ' + JSON.stringify(errToJSON(err), null, 2) : ''),
+		err: !IS_PRODUCTION ? JSON.stringify(errToJSON(err), null, 2) : JSON.stringify({
+			message:"Server error"
+		},null,2)
 	});
 }
 
@@ -63,7 +65,8 @@ export function handler() {
 		let def = requireFromString(doc.compiledCode);
 
 		let p = def.default.apply({
-			db
+			db,
+			sequential
 		}, [payload.d])
 		if (p && p.then && p.catch) {
 			(async () => {

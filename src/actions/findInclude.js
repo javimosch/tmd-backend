@@ -16,15 +16,14 @@ export default async function(data) {
 		});
 		query.$or = $or;
 	}
-	return (await Model.find(query).exec()).map(d => {
-		let json = {};
-		try {
-			json = JSON.parse(d.code);
-		} catch (err) {}
-		return {
+	return (await Model.find(query).populate(data.populate||[]).exec()).map(d => {
+		//let json = {};
+		//try {
+		//	json = JSON.parse(d.code);
+		//} catch (err) {}
+		return Object.assign(d.toJSON(),{
 			text: d.name,
-			value: d._id,
-			group: json.group || ''
-		};
+			value: d._id
+		});
 	});
 }

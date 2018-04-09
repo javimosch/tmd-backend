@@ -13,12 +13,6 @@ const userSchema = new mongoose.Schema({
     index: true
   },
   description:String,
-  required_fields_groups: [{
-    type: String //required fields group
-  }],
-  required_fields: [{
-    type: String //required fields
-  }],
   code: {
     type: String,
     required: true,

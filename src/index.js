@@ -12,6 +12,7 @@ import {
 import apiAction from './modules/apiAction';
 import morganBody from 'morgan-body';
 import configureFacebookMenssengerWebhook from './modules/fbMenssengerWebhook';
+import dbStartHook from './modules/dbStartHook';
 
 const express = require('express')
 const app = express()
@@ -26,7 +27,7 @@ var mongo_express_config = require('./config/mongoExpress');
 	await db.connect();
 
 	//await db.conn().model('field').migratePropertyFromJSON('group');
-
+	await dbStartHook();
 	await apiAction.syncActions();
 
 

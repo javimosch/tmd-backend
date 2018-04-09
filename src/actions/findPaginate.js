@@ -6,6 +6,12 @@ export default async function(data) {
 	if (!data.query) data.query = {};
 	if (!data.offset) data.offset = 0;
 	if (!data.limit) data.limit = 500;
+	if (!data.options) data.options = {};
+
+	if(data.populate){
+		data.options.populate = data.populate;
+	}
+
 	let res = await Model.findPaginate(data.query, data.offset, data.limit,data.options||{});
 	let arr = res.docs;
 	return arr.map(d => {
@@ -34,7 +40,7 @@ export default async function(data) {
 				let s = t.split(':');
 				dd[s[1]] = d[s[0]];
 			});
-			d = dd;
+			Object.assign(d,dd);
 		}
 		return d;
 	});

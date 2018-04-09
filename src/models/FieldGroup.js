@@ -12,6 +12,10 @@ const schema = new mongoose.Schema({
     unique: true,
     index: true
   },
+  fields:[{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'field',
+  }]
 }, {
   timestamps: true,
   toObject: {}

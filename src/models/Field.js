@@ -3,9 +3,10 @@ import {
 } from '../helpers/mongoPagination';
 var mongoosePaginate = require('mongoose-paginate');
 const mongoose = require('mongoose');
+const db = require('../modules/db');
 import sequential from 'promise-sequential';
 
-const userSchema = new mongoose.Schema({
+const schema = new mongoose.Schema({
   name: {
     type: String,
     required: true,
@@ -13,7 +14,8 @@ const userSchema = new mongoose.Schema({
     index: true
   },
   group: {
-    type: String,
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'field_group',
     required: true
   },
   code: {
@@ -21,16 +23,40 @@ const userSchema = new mongoose.Schema({
     required: true,
     default: "{}"
   },
+  order: {
+    type: Number
+  },
 }, {
   timestamps: true,
   toObject: {}
 });
 
-userSchema.options.toObject.transform = function(doc, ret) {
+schema.options.toObject.transform = function(doc, ret) {
+  if (doc && doc.group && doc.group._id) {
+    ret.groupName = doc.group.name;
+  } else {
+    ret.groupName = '(missing)'
+  }
   return ret;
 };
 
-userSchema.statics.migratePropertyFromJSON = async function(prop) {
+schema.post('remove', function(doc, next) {
+  const FieldGroup = db.conn().model('field_group');
+
+  FieldGroup.update({
+    _id: doc.group
+  }, {
+    $pull: {
+      fields: doc._id
+    }
+  }).exec().then(next).catch(err => {
+    console.error('Removing field reference from field_group', err);
+    throw err;
+  });
+
+});
+
+schema.statics.migratePropertyFromJSON = async function(prop) {
   let docs = await this.find({}).exec();
   let r = await sequential(docs.map(d => {
     return async () => {
@@ -43,10 +69,10 @@ userSchema.statics.migratePropertyFromJSON = async function(prop) {
       }
     }
   }));
-  console.log('Migration', r.filter(res => res === true).length,'from', docs.length);
+  console.log('Migration', r.filter(res => res === true).length, 'from', docs.length);
 };
 
-userSchema.statics.findPaginate = createPaginationMethod()
-userSchema.plugin(mongoosePaginate);
-const Field = mongoose.model('field', userSchema);
+schema.statics.findPaginate = createPaginationMethod()
+schema.plugin(mongoosePaginate);
+const Field = mongoose.model('field', schema);
 export default Field;
