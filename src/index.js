@@ -11,6 +11,7 @@ import {
 } from './config';
 import apiAction from './modules/apiAction';
 import morganBody from 'morgan-body';
+import configureFacebookMenssengerWebhook from './modules/fbMenssengerWebhook';
 
 const express = require('express')
 const app = express()
@@ -35,8 +36,9 @@ var mongo_express_config = require('./config/mongoExpress');
 	var bodyParser = require('body-parser')
 	app.use(bodyParser.json())
 
-
 	morganBody(app);
+
+	configureFacebookMenssengerWebhook(app);
 
 	app.use('/rpc/*', apiAction.handler());
 	app.use('/', mongo_express(mongo_express_config))
