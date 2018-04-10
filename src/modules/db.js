@@ -21,11 +21,18 @@ var self = module.exports = {
 function connectMongoose() {
 	return new Promise((resolve, reject) => {
 		(async () => {
-			var conn = mongoose.createConnection(URI);
+			var conn = mongoose.createConnection(URI, {
+				server: {
+					// sets how many times to try reconnecting
+					reconnectTries: Number.MAX_VALUE,
+					// sets the delay between every retry (milliseconds)
+					reconnectInterval: 1000
+				}
+			});
 			self.connections.default = conn;
-			
-			Object.keys(mongoose.models).forEach(modelName=>{
-				conn.model(modelName,mongoose.models[modelName].schema);
+
+			Object.keys(mongoose.models).forEach(modelName => {
+				conn.model(modelName, mongoose.models[modelName].schema);
 			})
 
 			conn.on('connected', () => {
