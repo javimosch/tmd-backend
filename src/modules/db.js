@@ -2,6 +2,9 @@ const console = require('tracer').colorConsole();
 import mongoose from 'mongoose';
 import path from 'path';
 import fs from 'fs';
+
+var morgan = require('mongoose-morgan');
+
 if (process.env.NODE_ENV !== 'production') {
 	mongoose.set('debug', true);
 }
@@ -10,12 +13,27 @@ const URI = process.env.dbURI || process.env.ME_CONFIG_MONGODB_URL;
 
 var self = module.exports = {
 	connections: {},
-	connect: async () => {
+	connect: async (app) => {
 		await loadModels();
 		if (!URI) throw Error('dbURI required');
 		await connectMongoose();
+		bindMorganLogging(app)
 	},
-	conn: () => self.connections.default
+	conn: () => self.connections.default,
+	URI: URI
+}
+
+function bindMorganLogging(app) {
+	app.use(morgan({
+			collection: 'morgan_lgos',
+			connectionString: URI,
+		}, {
+			skip: function(req, res) {
+				return res.statusCode !== 500;
+			}
+		},
+		'dev'
+	));
 }
 
 function connectMongoose() {

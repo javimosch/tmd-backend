@@ -11,6 +11,7 @@ import {
 } from './config';
 import apiAction from './modules/apiAction';
 import morganBody from 'morgan-body';
+
 import configureFacebookMenssengerWebhook from './modules/fbMenssengerWebhook';
 import dbStartHook from './modules/dbStartHook';
 
@@ -23,12 +24,19 @@ var mongo_express_config = require('./config/mongoExpress');
 
 (async () => {
 
+	var server = require('http').Server(app);
 
-	await db.connect();
+	require('./modules/sockets').default(server);
+		
+	
+	
+	await db.connect(app);
 
 	//await db.conn().model('field').migratePropertyFromJSON('group');
 	await dbStartHook();
 	await apiAction.sync();
+
+	
 
 	const bearerToken = require('express-bearer-token');
 	app.use(bearerToken({
@@ -44,7 +52,12 @@ var mongo_express_config = require('./config/mongoExpress');
 	var bodyParser = require('body-parser')
 	app.use(bodyParser.json())
 
+	
+
 	morganBody(app);
+	
+	require('./modules/expressMonitor').default(app);
+	
 
 	configureFacebookMenssengerWebhook(app);
 
@@ -53,6 +66,6 @@ var mongo_express_config = require('./config/mongoExpress');
 
 
 	if (!process.env.PORT) throw new Error('PORT required');
-	app.listen(process.env.PORT, () => console.log(`Listening on port ${process.env.PORT}`))
+	server.listen(process.env.PORT, () => console.log(`Listening on port ${process.env.PORT}`))
 
 })().catch(console.error);
