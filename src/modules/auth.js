@@ -1,12 +1,12 @@
 
 import jwt from 'jsonwebtoken';
-import { JWT_SECRET, IS_PRODUCTION } from '../config';
+import { JWT_SECRET, IS_PRODUCTION, JWT_SECRET_DURATION } from '../config';
 import mongoose from 'mongoose';
 import db from './db';
 
 export function jwtSign(data) {
   return jwt.sign(data, JWT_SECRET, {
-    expiresIn: 60 * 60
+    expiresIn: JWT_SECRET_DURATION
   });
 }
 
