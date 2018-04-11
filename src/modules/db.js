@@ -55,7 +55,7 @@ function loadModels() {
 			var name = file.substr(0, file.indexOf('.'));
 			try {
 				require(path.join(__dirname, '../models', name));
-				console.log('Model ' + name + ' loaded');
+				//console.log('Model ' + name + ' loaded');
 			} catch (err) {
 				reject('Model ' + name + ' failed to load: ' + err.toString());
 			}

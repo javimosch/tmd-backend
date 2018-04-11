@@ -1,3 +1,9 @@
+export const middlewares = [{
+	name:'authenticate',
+	params:[{
+		roleIs:'root'
+	}]
+}];
 export default async function(data){
 	const {db} = this;
 	let Model = db.conn().model('field');

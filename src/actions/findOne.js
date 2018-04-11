@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+export const middlewares = ['transformRemovePassword']
 export default async function(data){
 	const {db} = this;
 	let Model = db.conn().model(data.model);

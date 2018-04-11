@@ -1,17 +1,18 @@
 import {
 	IS_PRODUCTION
 } from '../config';
+import config from '../config'
 import db from './db';
 import * as sander from 'sander';
 import sequential from 'promise-sequential';
 import path from 'path';
 import * as babel from 'babel-core';
+import middlewares from './apiActionMiddlewares'
+import _ from 'lodash';
 
 const console = require('tracer').colorConsole();
 var beautify = require('js-beautify').js_beautify;
 var errToJSON = require('error-to-json')
-
-
 var requireFromString = require('require-from-string', '', [
 	//__dirname,
 	//path.join(__dirname,'..')
@@ -19,8 +20,24 @@ var requireFromString = require('require-from-string', '', [
 ]);
 
 let state = {
-	docs: []
+	docs: [],
+	modules:{}
 };
+
+
+async function getModules(){
+	if(_.keys(state.modules).length>0) return state.modules;
+	let dirs = await sander.readdir(path.join(__dirname))
+	let res = await sequential(dirs.filter(d=>d.indexOf('apiAction.js')===-1 && d.indexOf('.js')!==-1).map(d=>{
+		return async()=> ({
+			name: d.replace('.js',''),
+			def: require('./'+d)
+		})
+	}))
+	res.forEach(r=>state.modules[r.name]=r.def)
+	return state.modules;
+}
+
 
 function sendSuccess(data, res) {
 	res.status(200).json({
@@ -42,16 +59,21 @@ function sendBadActionImplementation(msg, res) {
 }
 
 function sendServerError(err, res) {
+	let errObject = errToJSON(err);
+	if(process.env.ERRORS_RES_MODE==='message'){
+		errObject = {message: errObject.message}
+	}
+	let detail = JSON.stringify(errObject, null, 2);
 	res.status(500).json({
 		data: null,
-		err: !IS_PRODUCTION ? JSON.stringify(errToJSON(err), null, 2) : JSON.stringify({
-			message:"Server error"
-		},null,2)
+		err: !IS_PRODUCTION ? detail : JSON.stringify({
+			message: "Server error"
+		}, null, 2)
 	});
 }
 
 export function handler() {
-	return function(req, res) {
+	return async function(req, res) {
 		let payload = req.body;
 
 		if (!payload.n) return sendBadParam('Action name required (n)', res);
@@ -64,13 +86,33 @@ export function handler() {
 
 		let def = requireFromString(doc.compiledCode);
 
-		let p = def.default.apply({
+		const functionScope = {
+			model: (n) => db.conn().model(n),
 			db,
-			sequential
-		}, [payload.d])
+			sequential,
+			req,
+			config,
+			modules: await getModules()
+		};
+
+		//middlewares
+		if (def.middlewares) {
+			try {
+				await middlewares.run(doc,def,functionScope,payload.d);
+			} catch (err) {
+				console.warn('Action',doc.name,'middleware exit')
+				return sendServerError(err,res);
+			}
+		}else{
+			console.info('Runing',doc.name,'without middlewares')
+		}
+
+		let p = def.default.apply(functionScope, [payload.d])
 		if (p && p.then && p.catch) {
 			(async () => {
 				let actionResponseData = await p;
+				actionResponseData = await middlewares.runPost(doc,def,functionScope,actionResponseData)
+				console.info('Success',actionResponseData)
 				sendSuccess(actionResponseData, res);
 			})().catch(err => {
 				console.log(err);
@@ -85,7 +127,8 @@ export function handler() {
 	}
 }
 
-export async function syncActions() {
+export async function sync() {
+
 	await sander.rimraf(path.join(__dirname, '../actions/temp/*.js'));
 	let ApiAction = db.conn().model('api_action');
 	let len = await ApiAction.count({}).exec();
@@ -100,10 +143,20 @@ export default async function(data){
 		})
 	}
 
+	try{
+		await getModules()
+	}catch(err){
+		console.error('It should be able to read modules')
+		process.exit(1);
+	}
+	
 
 	if (!IS_PRODUCTION) {
+		await middlewares.sync()
 		await saveOrUpdateLocalActions(ApiAction);
 	}
+
+	await middlewares.load()
 
 
 	state.docs = await ApiAction.find({}).exec();
@@ -115,21 +168,28 @@ export default async function(data){
 	});
 	await sequential(state.docs.map(d => {
 		return async function() {
-			let code = (await babel.transform(d.code, {
-				minified: false,
-				babelrc: false,
-				presets: [
-					["env", {
-						"targets": {
-							"node": "6.0"
-						}
-					}]
-				]
-			})).code;
-			d.compiledCode = code;
-			await sander.writeFile(path.join(__dirname, `../actions/temp/_temp_${d.name}.js`), code);
+			var code
+			try {
+				code = (await babel.transform(d.code, {
+					minified: false,
+					babelrc: false,
+					presets: [
+						["env", {
+							"targets": {
+								"node": "6.0"
+							}
+						}]
+					]
+				})).code;
+				d.compiledCode = code;
+				//await sander.writeFile(path.join(__dirname, `../actions/temp/_temp_${d.name}.js`), code);
+			} catch (err) {
+				console.error('Action', d.name, 'failed to load', err);
+				d.hasErrors = true;
+			}
 		}
 	}));
+	state.docs = state.docs.filter(d => !d.hasErrors);
 	return;
 }
 
@@ -162,7 +222,7 @@ async function saveOrUpdateLocalActions(ApiAction) {
 				}).exec();
 			}
 		};
-	}));
+	}))//.catch(console.error);
 }
 
 function falseWithMessage(msg) {
@@ -172,5 +232,5 @@ function falseWithMessage(msg) {
 
 export default {
 	handler,
-	syncActions
+	sync
 };

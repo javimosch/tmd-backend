@@ -28,8 +28,15 @@ var mongo_express_config = require('./config/mongoExpress');
 
 	//await db.conn().model('field').migratePropertyFromJSON('group');
 	await dbStartHook();
-	await apiAction.syncActions();
+	await apiAction.sync();
 
+	const bearerToken = require('express-bearer-token');
+	app.use(bearerToken({
+		bodyKey: 'access_token',
+		queryKey: 'access_token',
+		headerKey: 'Bearer',
+		reqKey: 'token'
+	}));
 
 	var cors = require('cors')
 	app.use(cors())
