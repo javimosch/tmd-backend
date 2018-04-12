@@ -1,4 +1,4 @@
-export default async function(data) {
+export default async function saveRecord(data) {
 	const {
 		db
 	} = this;

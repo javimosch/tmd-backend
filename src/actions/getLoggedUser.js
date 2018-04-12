@@ -1,6 +1,8 @@
 export const middlewares = [{
 	name:'authenticate',
-	params:[]
+	params:[{
+		model:"tae_user"
+	}]
 }];
 export default async function(data){
 	return this.req.user;

@@ -17,7 +17,7 @@ var self = module.exports = {
 		await loadModels();
 		if (!URI) throw Error('dbURI required');
 		await connectMongoose();
-		bindMorganLogging(app)
+		//bindMorganLogging(app)
 	},
 	conn: () => self.connections.default,
 	URI: URI
@@ -25,7 +25,7 @@ var self = module.exports = {
 
 function bindMorganLogging(app) {
 	app.use(morgan({
-			collection: 'morgan_lgos',
+			collection: 'morgan_logs',
 			connectionString: URI,
 		}, {
 			skip: function(req, res) {

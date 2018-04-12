@@ -104,7 +104,11 @@ function getMiddlewareParams(middleware, middlewareList, data){
 	let middlewareOptions = middlewareList.find(m=>typeof m==='object'&&m.name==middleware.name);
 	//E.g: ['limitFields',['_id','text']]
 	if(middlewareOptions){
-		params = params.concat(middlewareOptions.params||[])
+		let middlewareParams = middlewareOptions.params;
+		if(!(middlewareParams instanceof Array) && typeof middlewareParams === 'object'){
+			middlewareParams = [];
+		}
+		params = params.concat(middlewareParams||[])
 	}
 	if(params.length>1){
 		console.warn('MIDDLEWARE PARAMS',middleware.name,'PARAMS',params,'COMPLETE LIST',middlewareList);

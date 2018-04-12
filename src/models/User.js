@@ -12,6 +12,10 @@ const userSchema = new mongoose.Schema({
   password:{
     type: String,
   },
+  sessions:[{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'session'
+  }],
   role: {
     type: String,
     enum: ['normal', 'root'],

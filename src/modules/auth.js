@@ -4,9 +4,9 @@ import { JWT_SECRET, IS_PRODUCTION, JWT_SECRET_DURATION } from '../config';
 import mongoose from 'mongoose';
 import db from './db';
 
-export function jwtSign(data) {
+export function jwtSign(data,duration) {
   return jwt.sign(data, JWT_SECRET, {
-    expiresIn: JWT_SECRET_DURATION
+    expiresIn: duration || JWT_SECRET_DURATION
   });
 }
 
@@ -27,7 +27,7 @@ export function jwtVerify(token) {
   });
 }
 
-export async function getUserFromToken(token) {
+export async function getUserFromToken(token,modelName = "user") {
   if (!token) {
     return null;
   }
@@ -37,7 +37,29 @@ export async function getUserFromToken(token) {
 
   try {
     let decoded = await jwtVerify(token);
-    let doc = await db.conn().model('user').findById(decoded.userId).exec();
+    if(!decoded.userId) return null;
+    let doc = await db.conn().model(modelName).findById(decoded.userId).exec();
+    return doc;
+  } catch ( err ) {
+    // console.log('JWT', err);
+    return null;
+  }
+}
+
+export async function getSessionFromToken(token) {
+  if (!token) {
+    return null;
+  }
+  if (token === 'none') {
+    return null;
+  }
+
+  try {
+    let decoded = await jwtVerify(token);
+    if(!decoded.sessionId) return null;
+    
+    let doc = await db.conn().model('session').findById(decoded.sessionId).exec();
+    
     return doc;
   } catch ( err ) {
     // console.log('JWT', err);
