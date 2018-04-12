@@ -8,6 +8,7 @@ export default async function({
 	email,
 	password
 }) {
+	const {jwtSign} = modules.auth;
 	const {
 		encrypt
 	} = this.modules.cryptr;
