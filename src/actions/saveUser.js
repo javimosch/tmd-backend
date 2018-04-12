@@ -1,6 +1,3 @@
-import {
-	encrypt
-} from './src/modules/cryptr'
 export const middlewares = [{
 	name: 'authenticate',
 	params: [{
@@ -8,6 +5,9 @@ export const middlewares = [{
 	}]
 }, 'validateUserFields', 'transformPublicUser'];
 export default async function(data) {
+	const {
+		encrypt
+	} = this.modules.cryptr;
 	const {
 		_id,
 		email,

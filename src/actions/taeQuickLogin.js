@@ -1,9 +1,3 @@
-import {
-	jwtSign
-} from './src/modules/auth'
-import {
-	encrypt
-} from './src/modules/cryptr'
 export const middlewares = ['validateLoginFields', 'transformLogin', {
 	name: 'authenticateSilent',
 	params: {
@@ -14,7 +8,9 @@ export default async function({
 	email,
 	password
 }) {
-
+	const {
+		encrypt
+	} = this.modules.cryptr;
 	const {
 		model
 	} = this;
