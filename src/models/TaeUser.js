@@ -15,6 +15,12 @@ const schema = new mongoose.Schema({
   }],
   password:{
     type: String,
+  },
+  role: {
+    type: String,
+    enum: ['normal', 'root'],
+    required: true,
+    default: 'normal'
   }
 }, {
   timestamps: true,

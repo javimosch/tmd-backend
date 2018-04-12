@@ -29,8 +29,10 @@ export default async function(data) {
 	if (payload) {
 		if (doc) {
 			doc.set(payload)
+			this.modules.analytics.recordEvent('update_user',payload).catch(console.error);
 			return await doc.save()
 		} else {
+			this.modules.analytics.recordEvent('create_user',payload).catch(console.error);
 			return await User.create(payload)
 		}
 	}

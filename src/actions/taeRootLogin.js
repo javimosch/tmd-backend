@@ -6,9 +6,10 @@ export default async function({email, password}) {
 	const {
 		model
 	} = this;
-	let doc = await model('user').findOne({
+	let doc = await model('tae_user').findOne({
 		email, 
-		password: encrypt(password)
+		password: encrypt(password),
+		role:'root'
 	});
 	if (doc) {
 
@@ -17,7 +18,7 @@ export default async function({email, password}) {
 			await doc.save();
 		}
 
-		this.modules.analytics.recordEvent('loginWithEmailAndPassword',doc.toJSON()).catch(console.error);
+		this.modules.analytics.recordEvent('taeRootLogin',doc.toJSON()).catch(console.error);
 
 		return {
 			user: doc,

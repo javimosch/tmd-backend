@@ -21,20 +21,21 @@ var requireFromString = require('require-from-string', '', [
 
 let state = {
 	docs: [],
-	modules:{}
+	modules: {}
 };
 
 
-async function getModules(){
-	if(_.keys(state.modules).length>0) return state.modules;
+async function getModules() {
+	if (_.keys(state.modules).length > 0) return state.modules;
 	let dirs = await sander.readdir(path.join(__dirname))
-	let res = await sequential(dirs.filter(d=>d.indexOf('apiAction.js')===-1 && d.indexOf('.js')!==-1).map(d=>{
-		return async()=> ({
-			name: d.replace('.js',''),
-			def: require('./'+d)
+	//d.indexOf('apiAction.js') === -1 &&
+	let res = await sequential(dirs.filter(d =>  d.indexOf('.js') !== -1).map(d => {
+		return async () => ({
+			name: d.replace('.js', ''),
+			def: require('./' + d)
 		})
 	}))
-	res.forEach(r=>state.modules[r.name]=r.def)
+	res.forEach(r => state.modules[r.name] = r.def)
 	return state.modules;
 }
 
@@ -60,8 +61,10 @@ function sendBadActionImplementation(msg, res) {
 
 function sendServerError(err, res) {
 	let errObject = errToJSON(err);
-	if(process.env.ERRORS_RES_MODE==='message'){
-		errObject = {message: errObject.message}
+	if (process.env.ERRORS_RES_MODE === 'message') {
+		errObject = {
+			message: errObject.message
+		}
 	}
 	let detail = JSON.stringify(errObject, null, 2);
 	res.status(500).json({
@@ -98,21 +101,21 @@ export function handler() {
 		//middlewares
 		if (def.middlewares) {
 			try {
-				await middlewares.run(doc,def,functionScope,payload.d);
+				await middlewares.run(doc, def, functionScope, payload.d);
 			} catch (err) {
-				console.warn('Action',doc.name,'middleware exit')
-				return sendServerError(err,res);
+				console.warn('Action', doc.name, 'middleware exit')
+				return sendServerError(err, res);
 			}
-		}else{
-			console.info('Runing',doc.name,'without middlewares')
+		} else {
+			console.info('Runing', doc.name, 'without middlewares')
 		}
 
 		let p = def.default.apply(functionScope, [payload.d])
 		if (p && p.then && p.catch) {
 			(async () => {
 				let actionResponseData = await p;
-				actionResponseData = await middlewares.runPost(doc,def,functionScope,actionResponseData)
-				console.info('Success',actionResponseData)
+				actionResponseData = await middlewares.runPost(doc, def, functionScope, actionResponseData)
+				console.info('Success', actionResponseData)
 				sendSuccess(actionResponseData, res);
 			})().catch(err => {
 				console.log(err);
@@ -143,13 +146,13 @@ export default async function(data){
 		})
 	}
 
-	try{
+	try {
 		await getModules()
-	}catch(err){
+	} catch (err) {
 		console.error('It should be able to read modules')
 		process.exit(1);
 	}
-	
+
 
 	if (!IS_PRODUCTION) {
 		await middlewares.sync()
@@ -166,7 +169,27 @@ export default async function(data){
 		if (d.name.indexOf('-') !== -1) return falseWithMessage('Action skip: [' + d.name + ']');
 		return true;
 	});
-	await sequential(state.docs.map(d => {
+	await compileActions(state.docs);
+	state.docs = state.docs.filter(d => !d.hasErrors);
+	return;
+}
+
+export async function updateActions(docs) {
+	console.log('Compiling actions',docs.map(d=>d.name))
+	await compileActions(docs);
+	// Iterate over first array of objects
+	_.map(state.docs, function(obj) {
+		// add the properties from second array matching the userID
+		// to the object from first array and return the updated object
+		return _.assign(obj, _.find(docs, {
+			_id: obj._id
+		}));
+	});
+	console.log('Actions LIVE update')
+}
+
+export async function compileActions(docs) {
+	await sequential(docs.map(d => {
 		return async function() {
 			var code
 			try {
@@ -189,8 +212,6 @@ export default async function(data){
 			}
 		}
 	}));
-	state.docs = state.docs.filter(d => !d.hasErrors);
-	return;
 }
 
 async function saveOrUpdateLocalActions(ApiAction) {
@@ -222,7 +243,7 @@ async function saveOrUpdateLocalActions(ApiAction) {
 				}).exec();
 			}
 		};
-	}))//.catch(console.error);
+	})) //.catch(console.error);
 }
 
 function falseWithMessage(msg) {

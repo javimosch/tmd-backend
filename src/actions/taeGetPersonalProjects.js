@@ -6,15 +6,16 @@ export const middlewares = [ {
 export default async function taeGetPersonalProjects(){
 	let res = [];
 	if(this.req.user){
-		res = await this.model('tae_project').find({
+		return await this.model('tae_project').find({
 			user:this.req.user
 		})
 	}
 	if(this.req.session){
-		res = await this.model('tae_project').find({
+		return await this.model('tae_project').find({
 			session:this.req.session
 		})	
 	}
+
 	if(!this.req.session&&!this.req.user){
 		throw new Error('SESSION_REQUIRED')
 	}else{
@@ -27,5 +28,6 @@ export default async function taeGetPersonalProjects(){
 			res = [doc]
 		}
 	}
+	
 	return res;
 }

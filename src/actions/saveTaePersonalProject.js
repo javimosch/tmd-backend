@@ -9,8 +9,10 @@ export default async function(d) {
 	})
 
 	if (!d._id) {
+		this.modules.analytics.recordEvent('et_create_project',payload).catch(console.error);
 		return await this.model('tae_project').create(payload)
 	} else {
+		this.modules.analytics.recordEvent('et_update_project',payload).catch(console.error);
 		return await this.model('tae_project').findOneAndUpdate({
 			_id: d._id
 		}, payload, {
