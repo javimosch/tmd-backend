@@ -1,7 +1,7 @@
 export const middlewares = ['validateLoginFields','transformLogin','authenticateSilent'];
 export default async function({email, password}) {
-	const {jwtSign} = modules.auth;
-	const {encrypt} = modules.cryptr;
+	const {jwtSign} = this.modules.auth;
+	const {encrypt} = this.modules.cryptr;
 
 	const {
 		model

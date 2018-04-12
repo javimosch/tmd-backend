@@ -24,6 +24,7 @@
     "joi": "^13.1.2",
     "js-beautify": "^1.7.5",
     "jsonwebtoken": "^8.2.1",
+    "keen-tracking": "^1.4.0",
     "mongo-express": "^0.46.1",
     "mongoose": "^5.0.13",
     "mongoose-morgan": "^1.0.4",

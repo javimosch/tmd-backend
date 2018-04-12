@@ -8,7 +8,8 @@ export default async function({
 	email,
 	password
 }) {
-	const {jwtSign} = modules.auth;
+	let event = 'login'
+	const {jwtSign} = this.modules.auth;
 	const {
 		encrypt
 	} = this.modules.cryptr;
@@ -24,6 +25,7 @@ export default async function({
 	}).exec()) !== 0;
 
 	if (!userExists && !doc){
+		event = 'register'
 		doc = await model('tae_user').create({
 			email,
 			password: encrypt(password)
@@ -58,6 +60,7 @@ export default async function({
 		}
 	}
 
+	this.modules.analytics.recordEvent(event,doc.toJSON()).catch(console.error);
 
 	return {
 		user: doc,
