@@ -9,9 +9,6 @@ export default async function authenticateSilent(data, options = {}) {
 			email: this.req.body.email
 		}).populate('sessions').exec()
 		session = user.sessions[user.sessions.length - 1];
-		if (!user) {
-			//nothin happens
-		}
 	} else {
 		if (this.req.token) {
 			//check jwt
@@ -23,10 +20,17 @@ export default async function authenticateSilent(data, options = {}) {
 				session = await this.modules.auth.getSessionFromToken(this.req.token,modelName);
 			}
 
-		} else {
-			//nothin happens
 		}
 	}
+
+	if(session && !user){
+		user = await this.model(modelName).findOne({
+			sessions:{
+				$in:[session._id]
+			}
+		}).exec();
+	}
+
 	this.req.session = session;
 	this.req.user = user;
 }

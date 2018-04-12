@@ -14,6 +14,7 @@ export default async function({
 	email,
 	password
 }) {
+
 	const {
 		model
 	} = this;
@@ -21,23 +22,31 @@ export default async function({
 		email,
 		password: encrypt(password)
 	});
-	if (!doc && (await model('tae_user').count({
-			email
-		}).exec()) === 0) {
+	let userExists = (await model('tae_user').count({
+		email
+	}).exec()) !== 0;
+
+	if (!userExists && !doc){
 		doc = await model('tae_user').create({
 			email,
 			password: encrypt(password)
 		});
 	}
+
+	if (userExists && !doc) {
+		throw new Error('PASSWORD_MISMATCH')
+	}
+
+
 	if (!doc.sessions || (this.req.session && doc.sessions.find(s => s._id == this.req.session) == null)) {
 		if (!doc.sessions) doc.sessions = [];
 		doc.sessions.push(this.req.session);
 		await doc.save();
 	}
 
-	if (req.session) {
+	if (this.req.session) {
 		let arr = await this.model('tae_project').find({
-			session: req.session._id
+			session: this.req.session._id
 		}).exec();
 		if (arr.length > 0) {
 			await this.model('tae_project').update({
@@ -51,6 +60,7 @@ export default async function({
 			}).exec();
 		}
 	}
+
 
 	return {
 		user: doc,

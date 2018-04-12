@@ -9,6 +9,10 @@ const schema = new mongoose.Schema({
     unique: true,
     index: true
   },
+  sessions:[{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'session'
+  }],
   password:{
     type: String,
   }
