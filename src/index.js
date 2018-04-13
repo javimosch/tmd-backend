@@ -28,7 +28,8 @@ var mongo_express_config = require('./config/mongoExpress');
 
 	require('./modules/sockets').default(server);
 		
-	
+	var cors = require('cors')
+	app.use(cors())
 	
 	await db.connect(app);
 
@@ -46,8 +47,7 @@ var mongo_express_config = require('./config/mongoExpress');
 		reqKey: 'token'
 	}));
 
-	var cors = require('cors')
-	app.use(cors())
+	
 
 	var bodyParser = require('body-parser')
 	app.use(bodyParser.json())

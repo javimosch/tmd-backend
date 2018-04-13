@@ -185,6 +185,9 @@ export async function updateActions(docs) {
 			_id: obj._id
 		}));
 	});
+	state.docs = state.docs.concat(
+		docs.filter(d=> state.docs.find(dd=>dd._id==d._id)!=null)
+	)
 	console.log('Actions LIVE update')
 }
 
