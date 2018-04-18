@@ -1,5 +1,10 @@
 import _ from 'lodash'
-export const middlewares = ['authenticateSilent', 'sessionRequired']
+export const middlewares = [{
+	name:'authenticateSilent',
+	params:[{
+		model:'tae_user'
+	}]
+}, 'sessionRequired']
 export default async function(d) {
 	d = _.pick(d, ['_id', 'name'])
 

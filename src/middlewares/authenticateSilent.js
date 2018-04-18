@@ -16,8 +16,10 @@ export default async function authenticateSilent(data, options = {}) {
 			if (user) {
 				user = await user.populate('sessions').execPopulate()
 				session = user.sessions[user.sessions.length - 1];
+				console.log('Session from user',session)
 			} else {
 				session = await this.modules.auth.getSessionFromToken(this.req.token,modelName);
+				console.log('Session from token',session, this.req.token,modelName)
 			}
 
 		}

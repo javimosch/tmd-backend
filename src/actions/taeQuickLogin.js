@@ -8,7 +8,7 @@ export default async function({
 	email,
 	password
 }) {
-	let event = 'login'
+	let isSignUp = false;
 	const {jwtSign} = this.modules.auth;
 	const {
 		encrypt
@@ -30,6 +30,7 @@ export default async function({
 			email,
 			password: encrypt(password)
 		});
+		isSignUp=true;
 	}
 
 	if (userExists && !doc) {
@@ -60,7 +61,10 @@ export default async function({
 		}
 	}
 
-	this.modules.analytics.recordEvent(event,doc.toJSON()).catch(console.error);
+	this.modules.analytics.recordEvent('taeQuickLogin',{
+		isSignUp:isSignUp,
+		user:doc.toJSON()
+	}).catch(console.error);
 
 	return {
 		user: doc,
