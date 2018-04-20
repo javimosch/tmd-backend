@@ -9,6 +9,7 @@ import path from 'path';
 import * as babel from 'babel-core';
 import middlewares from './apiActionMiddlewares'
 import _ from 'lodash';
+import moment from 'moment';
 
 const console = require('tracer').colorConsole();
 var beautify = require('js-beautify').js_beautify;
@@ -83,11 +84,29 @@ export function handler() {
 		if (!payload.d) return sendBadParam('Action data required (d)', res);
 		if (typeof payload.d !== 'object') return sendBadParam('Action data type mismatch (object expected)', res);
 
-		let doc = state.docs.filter(d => d.name == payload.n)[0];
+		let doc = null; //state.docs.filter(d => d.name == payload.n)[0];
 
+		if (!doc){
+			doc = await db.conn().model('api_action').findOne({
+				name: payload.n
+			}).exec();
+		}
+
+		var fd = (d)=>moment(d).format('DD/MM/YYYY HH:mm')
 		if (!doc) return sendBadParam('Action mistmach: ' + payload.n, res);
 
+		console.info(`Action ${payload.n} should compile? ${fd(doc.updatedAt)}>${fd(doc.compiledAt)}`)
+		
+		if(!doc.compiledAt || doc.updatedAt > doc.compiledAt){
+			await compileActions([doc]);
+			console.log(`Action ${payload.n} compiled`)
+		}
+
+		//if(!doc.compiledCode) return sendServerError('Missing compiled code')
+
 		let def = requireFromString(doc.compiledCode);
+
+		console.info('Executing code', moment(doc.compiledAt).format('DD/MM/YYYY HH:mm'),doc.compiledCode)
 
 		const functionScope = {
 			model: (n) => db.conn().model(n),
@@ -186,7 +205,7 @@ export async function updateActions(docs) {
 		}));
 	});
 	state.docs = state.docs.concat(
-		docs.filter(d=> state.docs.find(dd=>dd._id==d._id)!=null)
+		docs.filter(d=> state.docs.find(dd=>dd._id==d._id)==null)
 	)
 	console.log('Actions LIVE update')
 }
@@ -208,6 +227,8 @@ export async function compileActions(docs) {
 					]
 				})).code;
 				d.compiledCode = code;
+				d.compiledAt = Date.now()
+				await d.save()
 				//await sander.writeFile(path.join(__dirname, `../actions/temp/_temp_${d.name}.js`), code);
 			} catch (err) {
 				console.error('Action', d.name, 'failed to load', err);

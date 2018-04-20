@@ -38,6 +38,9 @@ export async function getUserFromToken(token,modelName = "user") {
   try {
     let decoded = await jwtVerify(token);
     if(!decoded.userId) return null;
+    if(decoded.model){
+      modelName = decoded.model;
+    }
     let doc = await db.conn().model(modelName).findById(decoded.userId).exec();
     return doc;
   } catch ( err ) {

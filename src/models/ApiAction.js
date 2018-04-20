@@ -19,7 +19,8 @@ const schema = new mongoose.Schema({
   protected:{
     type:Boolean,
     default:false
-  }
+  },
+  compiledAt:Date
 }, {
   timestamps: true,
   toObject: {}

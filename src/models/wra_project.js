@@ -15,11 +15,7 @@ const schema = new mongoose.Schema({
   user: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'tae_user'
-  },
-  session: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'session'
-  },
+  }
 }, {
   timestamps: true,
   toObject: {}
@@ -32,5 +28,5 @@ schema.options.toObject.transform = function(doc, ret) {
 
 schema.statics.findPaginate = createPaginationMethod()
 schema.plugin(mongoosePaginate);
-const TaeProject = mongoose.model('tae_project', schema);
-export default TaeProject;
+const WraProject = mongoose.model('wra_project', schema);
+export default WraProject;

@@ -23,7 +23,8 @@ export default async function({email, password}) {
 		return {
 			user: doc,
 			token: jwtSign({
-				userId: doc._id
+				userId: doc._id,
+				model: 'tae_user'
 			})
 		};
 	}else{
