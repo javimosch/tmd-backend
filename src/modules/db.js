@@ -2,6 +2,7 @@ const console = require('tracer').colorConsole();
 import mongoose from 'mongoose';
 import path from 'path';
 import fs from 'fs';
+var mongodbUri = require('mongodb-uri');
 
 var morgan = require('mongoose-morgan');
 
@@ -59,8 +60,10 @@ function bindMorganLogging(app) {
 function connectMongoose(options = {}) {
 	const {
 		name,
-		models
+		models,
+		dbURI
 	} = options
+
 	return new Promise((resolve, reject) => {
 
 		if (!name) return reject('NAME_REQUIRED')
@@ -68,8 +71,19 @@ function connectMongoose(options = {}) {
 			console.log(`connectMongoose ${name} custom models`, models.map(m => m.name))
 		}
 
-		(async () => {
-			var conn = mongoose.createConnection(URI, {
+		try {
+			let uri = dbURI || URI;
+
+			try {
+				var uriObject = mongodbUri.parse(uri);
+				if (!uriObject.database || !uriObject.username || !uriObject.password) {
+					throw new Error('INVALID_DB_URI')
+				}
+			} catch (err) {
+				throw new Error('INVALID_DB_URI')
+			}
+
+			var conn = mongoose.createConnection(uri, {
 				server: {
 					// sets how many times to try reconnecting
 					reconnectTries: Number.MAX_VALUE,
@@ -77,7 +91,6 @@ function connectMongoose(options = {}) {
 					reconnectInterval: 1000
 				}
 			});
-			self.connections[name] = conn;
 
 			if (!models) {
 				Object.keys(mongoose.models).forEach(modelName => {
@@ -91,6 +104,7 @@ function connectMongoose(options = {}) {
 
 			conn.on('connected', () => {
 				console.log('Connected');
+				self.connections[name] = conn;
 				resolve();
 			});
 			conn.on('error', (err) => {
@@ -98,7 +112,11 @@ function connectMongoose(options = {}) {
 				reject();
 			});
 			conn.on('disconnected', () => {});
-		})().catch(reject);
+
+		} catch (err) {
+			console.error('connectMongoose ERROR', err)
+			reject(err);
+		}
 	});
 }
 

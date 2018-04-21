@@ -26,6 +26,7 @@
     "jsonwebtoken": "^8.2.1",
     "keen-tracking": "^1.4.0",
     "mongo-express": "^0.46.1",
+    "mongodb-uri": "^0.9.7",
     "mongoose": "^5.0.13",
     "mongoose-morgan": "^1.0.4",
     "mongoose-paginate": "^5.0.3",
