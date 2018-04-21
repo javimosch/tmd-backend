@@ -13,7 +13,10 @@ const schema = new mongoose.Schema({
     index: true,
     required: true,
   },
-  fields:[fieldSchema],
+  fields:[{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'wra_collection_field'
+  }],
   owner: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'tae_user'

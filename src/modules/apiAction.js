@@ -30,7 +30,7 @@ async function getModules() {
 	if (_.keys(state.modules).length > 0) return state.modules;
 	let dirs = await sander.readdir(path.join(__dirname))
 	//d.indexOf('apiAction.js') === -1 &&
-	let res = await sequential(dirs.filter(d =>  d.indexOf('.js') !== -1).map(d => {
+	let res = await sequential(dirs.filter(d => d.indexOf('.js') !== -1).map(d => {
 		return async () => ({
 			name: d.replace('.js', ''),
 			def: require('./' + d)
@@ -86,27 +86,27 @@ export function handler() {
 
 		let doc = null; //state.docs.filter(d => d.name == payload.n)[0];
 
-		if (!doc){
+		if (!doc) {
 			doc = await db.conn().model('api_action').findOne({
 				name: payload.n
 			}).exec();
 		}
 
-		var fd = (d)=>moment(d).format('DD/MM/YYYY HH:mm')
+		var fd = (d) => moment(d).format('DD/MM/YYYY HH:mm')
 		if (!doc) return sendBadParam('Action mistmach: ' + payload.n, res);
 
 		console.info(`Action ${payload.n} should compile? ${fd(doc.updatedAt)}>${fd(doc.compiledAt)}`)
-		
-		if(!doc.compiledAt || doc.updatedAt > doc.compiledAt){
+
+		if (!doc.compiledAt || doc.updatedAt > doc.compiledAt) {
 			await compileActions([doc]);
 			console.log(`Action ${payload.n} compiled`)
 		}
 
-		//if(!doc.compiledCode) return sendServerError('Missing compiled code')
+		if (!doc.compiledCode) return sendServerError('ACTION_COMPILATION_FAIL')
 
 		let def = requireFromString(doc.compiledCode);
 
-		console.info('Executing code', moment(doc.compiledAt).format('DD/MM/YYYY HH:mm'),doc.compiledCode)
+		console.info('Executing code', moment(doc.compiledAt).format('DD/MM/YYYY HH:mm'), doc.compiledCode)
 
 		const functionScope = {
 			model: (n) => db.conn().model(n),
@@ -114,7 +114,12 @@ export function handler() {
 			sequential,
 			req,
 			config,
-			modules: await getModules()
+			modules: await getModules(),
+			callAction: function(n,p){
+				return call.apply({
+					req:this.req
+				},[n,p])
+			}
 		};
 
 		//middlewares
@@ -146,6 +151,47 @@ export function handler() {
 		}
 
 
+	}
+}
+
+export async function call(name, params) {
+	const {req} = this
+	var doc = await db.conn().model('api_action').findOne({
+		name: name
+	}).exec();
+	if (!doc) throw new Error('Action mistmach: ' + name);
+	if (!doc.compiledAt || doc.updatedAt > doc.compiledAt) {
+		await compileActions([doc]);
+		console.log(`SubCall Action ${name} compiled`)
+	}
+	let def = requireFromString(doc.compiledCode);
+	const scope = {
+		model: (n) => db.conn().model(n),
+		db,
+		sequential,
+		req,
+		config,
+		modules: await getModules()
+	};
+	if (def.middlewares) await middlewaresRunPre(doc, def, scope, params)
+	console.log(`SubCall ${name} Params: ${params.map(p=>typeof p)}`)
+	let p = def.default.apply(scope, params)
+	if (p && p.then && p.catch) {
+		let response = await p;
+		response = await middlewares.runPost(doc, def, scope, response)
+		console.info(`SubCall ${name} success`, response)
+		return response
+	} else {
+		throw new Error('Action should return a promise');
+	}
+}
+
+async function middlewaresRunPre(doc, def, scope, params) {
+	try {
+		await middlewares.run(doc, def, scope, params);
+	} catch (err) {
+		console.warn('Action', doc.name, 'middleware exit')
+		throw err
 	}
 }
 
@@ -194,7 +240,7 @@ export default async function(data){
 }
 
 export async function updateActions(docs) {
-	console.log('Compiling actions',docs.map(d=>d.name))
+	console.log('Compiling actions', docs.map(d => d.name))
 	await compileActions(docs);
 	// Iterate over first array of objects
 	_.map(state.docs, function(obj) {
@@ -205,7 +251,7 @@ export async function updateActions(docs) {
 		}));
 	});
 	state.docs = state.docs.concat(
-		docs.filter(d=> state.docs.find(dd=>dd._id==d._id)==null)
+		docs.filter(d => state.docs.find(dd => dd._id == d._id) == null)
 	)
 	console.log('Actions LIVE update')
 }
@@ -232,6 +278,7 @@ export async function compileActions(docs) {
 				//await sander.writeFile(path.join(__dirname, `../actions/temp/_temp_${d.name}.js`), code);
 			} catch (err) {
 				console.error('Action', d.name, 'failed to load', err);
+				d.err = err;
 				d.hasErrors = true;
 			}
 		}

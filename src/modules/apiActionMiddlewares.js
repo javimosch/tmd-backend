@@ -100,7 +100,7 @@ async function run(doc, def, scope, data) {
 }
 
 function getMiddlewareParams(middleware, middlewareList, data){
-	let params = [data];
+	let params = (data instanceof Array)?data:[data]
 	let middlewareOptions = middlewareList.find(m=>typeof m==='object'&&m.name==middleware.name);
 	//E.g: ['limitFields',['_id','text']]
 	if(middlewareOptions){
@@ -111,7 +111,7 @@ function getMiddlewareParams(middleware, middlewareList, data){
 		params = params.concat(middlewareParams||[])
 	}
 	if(params.length>1){
-		console.warn('MIDDLEWARE PARAMS',middleware.name,'PARAMS',params,'COMPLETE LIST',middlewareList);
+		//console.warn('MIDDLEWARE PARAMS',middleware.name,'PARAMS',params,'COMPLETE LIST',middlewareList);
 	}
 	return params;
 }
@@ -122,7 +122,7 @@ async function runPost(doc, def, scope, data) {
 		return find(typeof n==='object'?n.name:n)
 	}).filter(m => !!m && m.type==='post');
 	if(middlewaresToRun.length===0){
-		console.warn(doc.name,'has not post middlewares');
+		//console.warn(doc.name,'has not post middlewares');
 		return data;
 	}
 	console.info('Runing', doc.name, 'with middlewares (POST)', middlewaresToRun.map(m => m.name));

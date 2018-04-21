@@ -16,11 +16,31 @@ var self = module.exports = {
 	connect: async (app) => {
 		await loadModels();
 		if (!URI) throw Error('dbURI required');
-		await connectMongoose();
+		await connectMongoose({
+			name: 'default',
+			models: null
+		});
 		//bindMorganLogging(app)
 	},
 	conn: () => self.connections.default,
-	URI: URI
+	get: (n) => self.connections[n] || null,
+	connectMongoose,
+	URI: URI,
+	closeConnectionSafely: (n) => {
+		return new Promise((resolve, reject) => {
+			try {
+				if (self.get(n)) {
+					if (self.get(n).readState !== 0) {
+						self.get(n).close(false, () => {
+							resolve();
+						})
+					}
+				}
+			} catch (err) {
+				reject(err)
+			}
+		})
+	}
 }
 
 function bindMorganLogging(app) {
@@ -36,8 +56,18 @@ function bindMorganLogging(app) {
 	));
 }
 
-function connectMongoose() {
+function connectMongoose(options = {}) {
+	const {
+		name,
+		models
+	} = options
 	return new Promise((resolve, reject) => {
+
+		if (!name) return reject('NAME_REQUIRED')
+		if (models) {
+			console.log(`connectMongoose ${name} custom models`, models.map(m => m.name))
+		}
+
 		(async () => {
 			var conn = mongoose.createConnection(URI, {
 				server: {
@@ -47,11 +77,17 @@ function connectMongoose() {
 					reconnectInterval: 1000
 				}
 			});
-			self.connections.default = conn;
+			self.connections[name] = conn;
 
-			Object.keys(mongoose.models).forEach(modelName => {
-				conn.model(modelName, mongoose.models[modelName].schema);
-			})
+			if (!models) {
+				Object.keys(mongoose.models).forEach(modelName => {
+					conn.model(modelName, mongoose.models[modelName].schema);
+				})
+			} else {
+				models.forEach(m => {
+					conn.model(m.name, m.schema);
+				})
+			}
 
 			conn.on('connected', () => {
 				console.log('Connected');

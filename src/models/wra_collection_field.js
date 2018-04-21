@@ -20,7 +20,11 @@ export const schema = new mongoose.Schema({
   index:Boolean,
   required:Boolean,
   unique:Boolean,
-  enum:[String]
+  enum:[String],
+  owner: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'tae_user'
+  }
 }, {
   timestamps: true,
   toObject: {}

@@ -7,12 +7,25 @@ import sequential from 'promise-sequential';
 import moment from 'moment'
 
 const schema = new mongoose.Schema({
+  appName: {
+    type: String,
+    index: true,
+    required: true,
+    unique:true
+  },
   name: {
     type: String,
     index: true,
     required: true,
   },
-  user: {
+  dbURI: {
+    type: String,
+    required: true,
+  },
+  dependencies: [{
+    type: String,
+  }],
+  owner: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'tae_user'
   }
