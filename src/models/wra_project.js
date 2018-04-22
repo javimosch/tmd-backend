@@ -28,6 +28,11 @@ const schema = new mongoose.Schema({
   owner: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'tae_user'
+  },
+  apiKey:{
+    type:String,
+    index:true,
+    unique:true
   }
 }, {
   timestamps: true,

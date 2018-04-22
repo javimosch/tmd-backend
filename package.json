@@ -9,6 +9,7 @@
     "build": "cross-env NODE_ENV=production babel src --ignore 'locales' --out-dir dist --copy-files"
   },
   "dependencies": {
+    "apikeygen": "^0.2.0",
     "babel-cli": "^6.26.0",
     "babel-plugin-module-resolver": "^3.1.1",
     "babel-polyfill": "^6.26.0",

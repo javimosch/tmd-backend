@@ -61,7 +61,10 @@ var mongo_express_config = require('./config/mongoExpress');
 
 	configureFacebookMenssengerWebhook(app);
 
+	app.post('/client/:client', apiAction.handleClient());
+	
 	app.use('/rpc/*', apiAction.handler());
+
 	app.use('/', mongo_express(mongo_express_config))
 
 

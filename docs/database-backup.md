@@ -1,0 +1,1 @@
+mongodump --host HOST -d tmd --port 37089 --username tmd --password PASS --out OUTPUT

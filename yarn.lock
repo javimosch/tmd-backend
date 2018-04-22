@@ -84,6 +84,10 @@ anymatch@^2.0.0:
     micromatch "^3.1.4"
     normalize-path "^2.1.1"
 
+apikeygen@^0.2.0:
+  version "0.2.0"
+  resolved "https://registry.yarnpkg.com/apikeygen/-/apikeygen-0.2.0.tgz#ba9ac5e248bbaad714c7386f31d1ddffe3ce4099"
+
 aproba@^1.0.3:
   version "1.2.0"
   resolved "https://registry.yarnpkg.com/aproba/-/aproba-1.2.0.tgz#6802e6264efd18c790a1b0d517f0f2627bf2c94a"
