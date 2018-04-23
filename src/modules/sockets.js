@@ -1,19 +1,27 @@
+import {configureLoggingSockets} from './logging'
+
 const console = require('tracer').colorConsole();
 var io;
 
 export function emit(n, d) {
 	if (io) {
-		console.log('Sockets: Emit', n, d);
-		io.emit(n, d);
+		var nspName = d.$nsp;
+		delete d.$nsp;
+		if(nspName){
+			io.of(nspName).emit(n,d);
+		}else{
+			io.emit(n, d);	
+		}
 	}
 }
 
+
 export function getInstance() {
-	io.state = io.state || {}
-	io.state = {
-		scopes: io.state.scopes || [],
-		_events: io.state._events||{},
-		events: io.state.events||{
+	if(!io)return null;
+	io.state = io.state || {
+		scopes: io.state&&io.state.scopes || [],
+		_events:io.state&& io.state._events||{},
+		events: io.state&&io.state.events||{
 			emit: function ioEventsEmit(n, d){
 				if (!io.state._events[n]) return;
 				console.info('IO-EVENT-EMIT',n)
@@ -36,6 +44,8 @@ export function emitEvent(n,d){
 
 export default function(app) {
 	io = require('socket.io')(app);
+
+	configureLoggingSockets(io)
 
 	io.on('connection', function(socket) {
 		socket.emit('news', {
