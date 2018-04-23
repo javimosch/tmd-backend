@@ -10,6 +10,7 @@ import * as babel from 'babel-core';
 import middlewares from './apiActionMiddlewares'
 import _ from 'lodash';
 import moment from 'moment';
+import {execute as executeActionWithWorker} from './worker'
 
 const console = require('tracer').colorConsole();
 var beautify = require('js-beautify').js_beautify;
@@ -61,10 +62,21 @@ function sendBadActionImplementation(msg, res) {
 }
 
 function sendServerError(err, res) {
+	if(!err){
+		err = new Error('UNDEFINED_ERROR')
+	}
+	if(!err.messag&&!err.stack){
+		err = new Error(JSON.stringify({
+			message:"UNKNOWN_ERROR",
+			details: err
+		},null,2))
+	}
+	console.error('SERVER ERROR',err.message,err.stack)
 	let errObject = errToJSON(err);
 	if (process.env.ERRORS_RES_MODE === 'message') {
 		errObject = {
-			message: errObject.message
+			message: errObject.message,
+			stack: errObject.stack
 		}
 	}
 	let detail = JSON.stringify(errObject, null, 2);
@@ -134,7 +146,7 @@ export function handleClient() {
 			let action = await WraAction.findOne(actionQueryPayload).exec();
 			
 			
-			if (!action) return sendServerError('ACTION_MISMATCH', res)
+			if (!action) return sendServerError(new Error('ACTION_MISMATCH'), res)
 			if (!action.compiledAt || action.updatedAt > action.compiledAt) {
 				await compileActions([action]);
 			}
@@ -149,7 +161,10 @@ export function handleClient() {
 			}
 			let actionPromise = def.default.apply({}, [payload.d])
 			if (!actionPromise.then) return sendBadParam('ACTION_PROMISE_REQUIRED', res)
-			let result = await actionPromise
+			
+			//let result = await actionPromise
+			let result = await executeActionWithWorker(action,payload.d)
+
 			sendSuccess(result, res)
 		})().catch(err => sendServerError(err, res))
 	}
@@ -187,7 +202,7 @@ export function handler() {
 			await compileActions([doc]);
 		}
 
-		if (!doc.compiledCode) return sendServerError('ACTION_COMPILATION_FAIL',res)
+		if (!doc.compiledCode) return sendServerError(new Error('ACTION_COMPILATION_FAIL'),res)
 
 		let def = requireFromString(doc.compiledCode);
 
@@ -323,13 +338,13 @@ export default async function(data){
 
 
 	if (!IS_PRODUCTION) {
-		await middlewares.sync()
-		await saveOrUpdateLocalActions(ApiAction);
+		//await middlewares.sync()
+		//await saveOrUpdateLocalActions(ApiAction);
 	}
 
 	await middlewares.load()
 
-
+	/*
 	state.docs = await ApiAction.find({}).exec();
 	state.docs = state.docs.filter(d => {
 		if (d.name.indexOf(' ') !== -1) return falseWithMessage('Action skip: [' + d.name + ']');
@@ -339,6 +354,8 @@ export default async function(data){
 	});
 	await compileActions(state.docs);
 	state.docs = state.docs.filter(d => !d.hasErrors);
+	*/
+
 	return;
 }
 
