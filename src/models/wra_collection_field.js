@@ -14,7 +14,7 @@ export const schema = new mongoose.Schema({
   description:String,
   type:{
     type:String,
-    enum:['Number','String','Boolean','Date','Ref'],
+    enum:['Number','String','Boolean','Date','Ref','Object'],
     default:String,
     required:true
   },

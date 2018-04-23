@@ -27,7 +27,9 @@ let state = {
 };
 
 
+let m = null
 async function getModules() {
+	if(m) return m;
 	if (_.keys(state.modules).length > 0) return state.modules;
 	let dirs = await sander.readdir(path.join(__dirname))
 	//d.indexOf('apiAction.js') === -1 &&
@@ -38,7 +40,8 @@ async function getModules() {
 		})
 	}))
 	res.forEach(r => state.modules[r.name] = r.def)
-	return state.modules;
+	m = state.modules;;
+	return m;
 }
 
 
@@ -147,6 +150,8 @@ export function handleClient() {
 			
 			
 			if (!action) return sendServerError(new Error('ACTION_MISMATCH'), res)
+			
+				/*
 			if (!action.compiledAt || action.updatedAt > action.compiledAt) {
 				await compileActions([action]);
 			}
@@ -161,6 +166,7 @@ export function handleClient() {
 			}
 			let actionPromise = def.default.apply({}, [payload.d])
 			if (!actionPromise.then) return sendBadParam('ACTION_PROMISE_REQUIRED', res)
+				*/
 			
 			//let result = await actionPromise
 			let result = await executeActionWithWorker(action,payload.d)
@@ -173,6 +179,8 @@ export function handleClient() {
 export function handler() {
 	return async function(req, res) {
 		let payload = req.body;
+
+		if(payload.n.indexOf('stripe')!==-1) return sendServerError('STRIPENO')
 
 		if (!payload.n) return sendBadParam('Action name required (n)', res);
 		if (!payload.d) return sendBadParam('Action data required (d)', res);
@@ -205,8 +213,6 @@ export function handler() {
 		if (!doc.compiledCode) return sendServerError(new Error('ACTION_COMPILATION_FAIL'),res)
 
 		let def = requireFromString(doc.compiledCode);
-
-		console.info('Executing code', moment(doc.compiledAt).format('DD/MM/YYYY HH:mm'), doc.compiledCode)
 
 		const functionScope = {
 			model: (n) => db.conn().model(n),
