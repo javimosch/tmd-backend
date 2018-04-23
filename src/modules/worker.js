@@ -207,9 +207,16 @@ async function configureBlock(actionDoc) {
 		pak.dependencies = Object.assign(dependencies, pak.dependencies);
 		await sander.writeFile(`${cwd}/package.json`, JSON.stringify(pak, null, 2))
 		await exec(`cd ${block.cwd}; yarn;`)
-		exec(`node ${block.cwd}/worker-node.js --prefix ${block.cwd}`, {
+
+		const SOCKET_ENDPOINT = process.env.NODE_ENV === 'production' ? 'https://api.wrapkend.com/' + actionDoc.project.appName : 'http://localhost:3002/' + actionDoc.project.appName;
+
+		console.log('LUNCHING WORKER NODE_ENV',process.env.NODE_ENV, SOCKET_ENDPOINT)
+		exec(`SOCKET_ENDPOINT=${SOCKET_ENDPOINT} node ${block.cwd}/worker-node.js --prefix ${block.cwd}`, {
 			getChild: c => block.child = c,
-			cwd: block.cwd
+			cwd: block.cwd,
+			env: {
+				SOCKET_ENDPOINT: SOCKET_ENDPOINT
+			}
 		});
 		await configureSockets(actionDoc, block);
 		block.updatedAt = Date.now()
