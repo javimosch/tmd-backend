@@ -176,12 +176,18 @@ export function handler() {
 
 		console.info(`Action ${payload.n} should compile? ${fd(doc.updatedAt)}>${fd(doc.compiledAt)}`)
 
-		if (!doc.compiledAt || doc.updatedAt > doc.compiledAt) {
+		if (!doc.compiledAt) {
+			await compileActions([doc]);	
+		}else{
+			if(doc.updatedAt > doc.compiledAt){
+				await compileActions([doc]);	
+			}
+		}
+		if(!doc.compiledCode){
 			await compileActions([doc]);
-			console.log(`Action ${payload.n} compiled`)
 		}
 
-		if (!doc.compiledCode) return sendServerError('ACTION_COMPILATION_FAIL')
+		if (!doc.compiledCode) return sendServerError('ACTION_COMPILATION_FAIL',res)
 
 		let def = requireFromString(doc.compiledCode);
 
