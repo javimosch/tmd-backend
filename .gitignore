@@ -4,3 +4,4 @@ src/actions/temp/
 src/actions/temp/_temp*
 *-error.log
 .env
+!*logging*

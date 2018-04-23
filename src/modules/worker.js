@@ -12,7 +12,7 @@ const console = require('tracer').colorConsole();
 var errToJSON = require('error-to-json')
 
 const LOCAL_WORKER_CWD = process.env.LOCAL_WORKER_CWD //"/Users/javier/git/wrapkend-shared-worker"
-const SHARED_WORKER_REPO = process.env.SHARED_WORKER_REPO|| "git@github.com:javimosch/wrapkend-shared-worker.git"
+const SHARED_WORKER_REPO = process.env.SHARED_WORKER_REPO || "git@github.com:javimosch/wrapkend-shared-worker.git"
 
 var state = {
 	shared: {},
@@ -114,42 +114,64 @@ async function waitForWorkerSocket(block, timeout) {
 
 }
 
-async function configureSockets(actionDoc, block) {
-	const io = getIOInstance()
-	var nsp = io.of(actionDoc.project.appName);
-	nsp.on('connect', function(socket) {
-		socket.on('then', data => {
 
-			let id = data.$id;
-			let name = data.$n;
-			console.log('SOCKET THEN', id, name)
-			delete data.$id;
-			delete data.$n
-			if (state.events && state.events['then-' + id]) {
-				console.log('SOCKET THEN', id, 'CALLNG')
-				state.events['then-' + id](data.result)
-				delete state.events['then-' + id]
-			} else {
-				//console.error('Listener missing for ', name, 'THEN', data.result, state.events)
-			}
-		})
-		socket.on('catch', data => {
 
-			let id = data.$id;
-			let name = data.$n;
-			console.log('SOCKET CATCH', id, name, data.err && data.err.message)
-			delete data.$id;
-			delete data.$n
-			if (state.events && state.events['catch-' + id]) {
-				console.log('SOCKET CATCH', id, 'CALLING')
-				state.events['catch-' + id](data.err)
-				delete state.events['catch-' + id]
-			} else {
-				//console.error('Listener missing for ', name, 'CATCH', data.err)
+function configureSockets(actionDoc, block) {
+	return new Promise((resolve, reject) => {
+		const io = getIOInstance()
+		var nsp = io.of(actionDoc.project.appName);
+		nsp.on('connect', async function(socket) {
+
+
+
+			let project = actionDoc.project
+			let models = await db.conn().model('wra_collection').find({
+				projects: {
+					$in: [project._id]
+				}
+			}).populate('fields').exec()
+			const configureOptions = {
+				models: models,
+				dbURI: project.dbURI
 			}
-		})
-	});
-	block.nsp = nsp;
+			socket.once('configured', resolve)
+			socket.once('configured_error', reject)
+			console.log('CONFIGURING WORKER ....')
+			socket.emit('configure', configureOptions)
+
+			socket.on('then', data => {
+
+				let id = data.$id;
+				let name = data.$n;
+				console.log('SOCKET THEN', id, name)
+				delete data.$id;
+				delete data.$n
+				if (state.events && state.events['then-' + id]) {
+					console.log('SOCKET THEN', id, 'CALLNG')
+					state.events['then-' + id](data.result)
+					delete state.events['then-' + id]
+				} else {
+					//console.error('Listener missing for ', name, 'THEN', data.result, state.events)
+				}
+			})
+			socket.on('catch', data => {
+
+				let id = data.$id;
+				let name = data.$n;
+				console.log('SOCKET CATCH', id, name, data.err && data.err.message)
+				delete data.$id;
+				delete data.$n
+				if (state.events && state.events['catch-' + id]) {
+					console.log('SOCKET CATCH', id, 'CALLING')
+					state.events['catch-' + id](data.err)
+					delete state.events['catch-' + id]
+				} else {
+					//console.error('Listener missing for ', name, 'CATCH', data.err)
+				}
+			})
+		});
+		block.nsp = nsp;
+	})
 }
 
 async function configureBlock(actionDoc) {
@@ -159,7 +181,7 @@ async function configureBlock(actionDoc) {
 
 	actionDoc = await actionDoc.populate({
 		path: 'project',
-		select: 'appName dependencies'
+		select: 'appName dependencies dbURI'
 	}).execPopulate()
 
 	if (!actionDoc.project.appName) throw new Error('PROJECT_APP_NAME_NOT_FOUND')
@@ -215,7 +237,7 @@ export async function updateSharedWorkerDependencies(project) {
 	let block = state.shared[project] || {
 		new: true
 	}
-	if(block.new){
+	if (block.new) {
 		block.cwd = getSharedWorkerCWD(project.appName)
 		await sander.rimraf(`${block.cwd}/**`)
 		await exec(`git clone ${SHARED_WORKER_REPO} ${block.cwd}`)

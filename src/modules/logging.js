@@ -16,9 +16,9 @@ export function getData() {
 export function configureLoggingSockets(io) {
 	let nsp = io.of('logging')
 	nsp.on('connect', socket => {
-		console.log('LOGGING SOCKET CONNECTED')
+		
 		socket.on('fetchAll', () => {
-			console.log('SOCKET fetchAll REQUESTED')
+		
 			socket.emit('logging', {
 				stdout: outputStdout,
 				stderr: outputStderr
