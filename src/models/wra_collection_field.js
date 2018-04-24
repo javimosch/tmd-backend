@@ -23,6 +23,11 @@ export const schema = new mongoose.Schema({
   required:Boolean,
   unique:Boolean,
   enum:[String],
+  public:{
+    type:Boolean,
+    requied:true,
+    default:true
+  },
   owner: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'tae_user'
@@ -34,6 +39,9 @@ export const schema = new mongoose.Schema({
 
 
 schema.options.toObject.transform = function(doc, ret) {
+  if(doc.owner.name){
+    ret.creatorName = doc.owner.name
+  }
   return ret;
 };
 

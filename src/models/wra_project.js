@@ -29,6 +29,10 @@ const schema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'tae_user'
   },
+  collaborators: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'tae_user'
+  }],
   apiKey:{
     type:String,
     index:true,
