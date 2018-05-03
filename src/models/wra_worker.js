@@ -7,50 +7,24 @@ import sequential from 'promise-sequential';
 import moment from 'moment'
 
 const schema = new mongoose.Schema({
-  appName: {
-    type: String,
-    index: true,
-    required: true,
-    unique:true
-  },
-  images:{
-    type:Object,
-    default:{}
-  },
-    /*{
-      brand_logo:{
-        public_id,
-        version,
-        url:,
-      }
-    }*/
   name: {
     type: String,
     index: true,
     required: true,
+    unique: true
   },
-  dbURI: {
-    type: String,
-    required: true,
-  },
-  dependencies: [{
-    type: String,
-  }],
-  owner: {
+  user: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'tae_user'
   },
-  collaborators: [{
+  project: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'tae_user'
-  }],
-  apiKey:{
-    type:String,
-    index:true
+    ref: 'wra_project'
   },
-  serverKey:{
-    type:String,
-    index:true,
+  metadata:Object,
+    //functions
+  lastConnection:{
+    type:Date
   }
 }, {
   timestamps: true,
@@ -58,11 +32,12 @@ const schema = new mongoose.Schema({
 });
 
 schema.options.toObject.transform = function(doc, ret) {
-  
+  if (doc.user._id) ret.userName = doc.user.email
+  if (doc.project._id) ret.projectName = doc.project.name
   return ret;
 };
 
 schema.statics.findPaginate = createPaginationMethod()
 schema.plugin(mongoosePaginate);
-const WraProject = mongoose.model('wra_project', schema);
-export default WraProject;
+const WraWorker = mongoose.model('wra_worker', schema);
+export default WraWorker;

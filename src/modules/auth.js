@@ -11,7 +11,7 @@ export function jwtSign(data,duration) {
 }
 
 export function jwtVerify(token) {
-  return new Promise((resolve, reject) => {
+  return new Promise(function jwtVerify(resolve, reject){
     jwt.verify(token, JWT_SECRET, (err, decoded) => {
       if (err) {
         if(!IS_PRODUCTION){

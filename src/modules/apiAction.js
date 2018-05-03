@@ -92,7 +92,7 @@ function sendServerError(err, res) {
 }
 
 export function handleClient() {
-	return function(req, res) {
+	return function rpcClientMiddleware(req, res) {
 		(async () => {
 			let payload = req.body;
 			let apiKey = req.params.client;
@@ -177,14 +177,30 @@ export function handleClient() {
 }
 
 export function handler() {
-	return async function(req, res) {
+	return async function rpcMiddleware(req, res) {
 		let payload = req.body;
-
-		if(payload.n.indexOf('stripe')!==-1) return sendServerError('STRIPENO')
 
 		if (!payload.n) return sendBadParam('Action name required (n)', res);
 		if (!payload.d) return sendBadParam('Action data required (d)', res);
-		if (typeof payload.d !== 'object') return sendBadParam('Action data type mismatch (object expected)', res);
+		
+		if (typeof payload.d !== 'object'){
+			try{
+				payload.d = JSON.parse(payload.d)
+			}catch(err){
+				return sendBadParam('Action data type mismatch (object expected)', res);	
+			}
+		}
+
+		//multipart data key support
+		var multipartData = {}
+		for(var x in payload){
+			if(x.indexOf('d.')!==-1){
+				multipartData[x.replace('d.','')]=payload[x]
+			}
+		}
+		if(Object.keys(multipartData).length>0){
+			payload.d = Object.assign({},multipartData, payload.d)
+		}
 
 		let doc = null; //state.docs.filter(d => d.name == payload.n)[0];
 
@@ -210,27 +226,16 @@ export function handler() {
 			await compileActions([doc]);
 		}
 
-		if (!doc.compiledCode) return sendServerError(new Error('ACTION_COMPILATION_FAIL'),res)
+		if (!doc.compiledCode) return sendServerError(doc.err||new Error('FUNCTION_COMPILE_ERROR'),res)
 
 		let def = requireFromString(doc.compiledCode);
 
-		const functionScope = {
-			model: (n) => db.conn().model(n),
-			db,
-			sequential,
-			req,
-			config,
-			modules: await getModules(),
-			callAction: function(n, p) {
-				return call.apply({
-					req: this.req
-				}, [n, p])
-			}
-		};
+		const functionScope = await getActionScope(req)
 
 		//middlewares
 		if (def.middlewares) {
 			try {
+				console.trace('HAS_REQ?', !!functionScope.req)
 				await middlewares.run(doc, def, functionScope, payload.d);
 			} catch (err) {
 				console.warn('Action', doc.name, 'middleware exit')
@@ -261,25 +266,35 @@ export function handler() {
 }
 
 async function getActionScope(req) {
-	return {
+	var scope =  {
 		model: (n) => db.conn().model(n),
 		db,
 		sequential,
-		req,
+		req:req,
 		config,
 		modules: await getModules(),
+		call: function(n, p) {
+			return call.apply({}, [n, getArgumentsShifted(arguments,1), req])
+		},
 		callAction: function(n, p) {
-			return call.apply({
-				req: this.req
-			}, [n, p])
+			return call.apply({}, [n, getArgumentsShifted(arguments,1), req])
 		}
 	};
+	console.trace('getActionScope',!!scope.req, Object.keys(scope))
+	return scope;
 }
 
-export async function call(name, params) {
-	const {
-		req
-	} = this
+function getArgumentsShifted(args, positions){
+	let result = Array.prototype.slice.call(args)
+	for(var x = 0; x<positions;x++){
+		result.shift()
+	}
+	return result;
+}
+
+export async function call(name, params,req) {
+	if(!(params instanceof Array)) throw new Error('call params should be Array')
+	if(!req) throw new Error('Express Request (req) expected')
 	var doc = await db.conn().model('api_action').findOne({
 		name: name
 	}).exec();
@@ -289,16 +304,9 @@ export async function call(name, params) {
 		console.log(`SubCall Action ${name} compiled`)
 	}
 	let def = requireFromString(doc.compiledCode);
-	const scope = {
-		model: (n) => db.conn().model(n),
-		db,
-		sequential,
-		req,
-		config,
-		modules: await getModules()
-	};
+	const scope = await getActionScope(req);
 	if (def.middlewares) await middlewaresRunPre(doc, def, scope, params)
-	console.log(`SubCall ${name} Params: ${params.map(p=>typeof p)}`)
+	console.log(`SubCall ${name} Params: ${Object.keys(params[0]).map(p=>`(${p}, ${typeof params[0][p]})`).join(', ')} ${params.length}`)
 	let p = def.default.apply(scope, params)
 	if (p && p.then && p.catch) {
 		let response = await p;
@@ -338,6 +346,7 @@ export default async function(data){
 	try {
 		await getModules()
 	} catch (err) {
+		console.error(err.stack)
 		console.error('It should be able to read modules')
 		process.exit(1);
 	}
@@ -390,6 +399,7 @@ export async function compileActions(docs) {
 				code = (await babel.transform(d.code, {
 					minified: false,
 					babelrc: false,
+					sourceMaps:'inline',
 					presets: [
 						["env", {
 							"targets": {

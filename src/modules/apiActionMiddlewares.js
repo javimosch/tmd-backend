@@ -3,6 +3,7 @@ import * as sander from 'sander';
 import sequential from 'promise-sequential';
 import path from 'path';
 import * as babel from 'babel-core';
+var errToJSON = require('error-to-json')
 const console = require('tracer').colorConsole();
 const requireFromString = require('require-from-string', '', [
 	process.cwd()
@@ -18,8 +19,41 @@ export default {
 	find
 }
 
-function find(m){
+function find(m) {
 	return state.docs.find(d => d.name == m)
+}
+
+async function compileIfNeeded(middleware) {
+	if (!middleware.compiledAt || (
+			new Date(middleware.updatedAt).getTime() > new Date(middleware.compiledAt).getTime()
+		)) {
+		var compiledCode
+		try {
+			compiledCode = (await babel.transform(middleware.code, {
+				minified: false,
+				babelrc: false,
+				presets: [
+					["env", {
+						"targets": {
+							"node": "6.0"
+						}
+					}]
+				]
+			})).code;
+			
+		} catch (err) {
+			return console.error('MIDDLEWARE_COMPILE_ERROR ' + JSON.stringify(errToJSON(err), null, 2))
+		}
+		try {
+			var def = requireFromString(compiledCode);
+		} catch (err) {
+			return console.error('MIDDLEWARE_REQUIRE_ERROR ' + JSON.stringify(errToJSON(err), null, 2))
+		}
+		middleware.compiledCode = compiledCode
+		middleware.compiledAt = Date.now()
+		await middleware.save()
+		return
+	}
 }
 
 async function sync() {
@@ -83,12 +117,14 @@ async function load() {
 
 
 async function run(doc, def, scope, data) {
-	let middlewaresToRun = def.middlewares.map(n => find(typeof n==='object'?n.name:n)).filter(m => !!m && m.type==='pre');
-	//console.info('Runing', doc.name, 'with middlewares', middlewaresToRun.map(m => m.name));
+	let middlewaresToRun = def.middlewares.map(n => find(typeof n === 'object' ? n.name : n)).filter(m => !!m && m.type === 'pre');
+	console.info('Runing', doc.name, 'with middlewares', middlewaresToRun.map(m => m.name));
 	await sequential(
 		middlewaresToRun.map(m => {
-			return async () => {
-				let r = requireFromString(m.compiledCode).default.apply(scope, getMiddlewareParams(m,def.middlewares,data))
+			return async function runPreMiddleware(){
+				console.log('MIDDLEWARE_RUN', m.name,'HAS_REQ?',!!scope.req)
+				await compileIfNeeded(m)
+				let r = requireFromString(m.compiledCode).default.apply(scope, getMiddlewareParams(m, def.middlewares, data))
 				if (r && r.then && r.catch) {
 					return await r;
 				} else {
@@ -99,29 +135,29 @@ async function run(doc, def, scope, data) {
 	)
 }
 
-function getMiddlewareParams(middleware, middlewareList, data){
-	let params = (data instanceof Array)?data:[data]
-	let middlewareOptions = middlewareList.find(m=>typeof m==='object'&&m.name==middleware.name);
+function getMiddlewareParams(middleware, middlewareList, data) {
+	let params = (data instanceof Array) ? data : [data]
+	let middlewareOptions = middlewareList.find(m => typeof m === 'object' && m.name == middleware.name);
 	//E.g: ['limitFields',['_id','text']]
-	if(middlewareOptions){
+	if (middlewareOptions) {
 		let middlewareParams = middlewareOptions.params;
-		if(!(middlewareParams instanceof Array) && typeof middlewareParams === 'object'){
+		if (!(middlewareParams instanceof Array) && typeof middlewareParams === 'object') {
 			middlewareParams = [];
 		}
-		params = params.concat(middlewareParams||[])
+		params = params.concat(middlewareParams || [])
 	}
-	if(params.length>1){
+	if (params.length > 1) {
 		//console.warn('MIDDLEWARE PARAMS',middleware.name,'PARAMS',params,'COMPLETE LIST',middlewareList);
 	}
 	return params;
 }
 
 async function runPost(doc, def, scope, data) {
-	if(!def.middlewares) return data;
+	if (!def.middlewares) return data;
 	let middlewaresToRun = def.middlewares.map(n => {
-		return find(typeof n==='object'?n.name:n)
-	}).filter(m => !!m && m.type==='post');
-	if(middlewaresToRun.length===0){
+		return find(typeof n === 'object' ? n.name : n)
+	}).filter(m => !!m && m.type === 'post');
+	if (middlewaresToRun.length === 0) {
 		//console.warn(doc.name,'has not post middlewares');
 		return data;
 	}
@@ -129,13 +165,14 @@ async function runPost(doc, def, scope, data) {
 
 	let res = await sequential(
 		middlewaresToRun.map(m => {
-			return async (previousResponse,responses,count) => {
+			return async (previousResponse, responses, count) => {
 				//console.log('sequence',previousResponse,responses,count)
-				if(count>1) {
+				if (count > 1) {
 					data = previousResponse;
 				}
-				console.log('Running',m.name,'with',data)
-				let r = requireFromString(m.compiledCode).default.apply(scope, getMiddlewareParams(m,def.middlewares,data))
+				await compileIfNeeded(m)
+				console.log('Running', m.name, 'with', data)
+				let r = requireFromString(m.compiledCode).default.apply(scope, getMiddlewareParams(m, def.middlewares, data))
 				if (r && r.then && r.catch) {
 					return await r;
 				} else {
@@ -144,6 +181,6 @@ async function runPost(doc, def, scope, data) {
 			}
 		})
 	);
-	console.log('After sequential',res)
-	return res[res.length-1];
+	console.log('After sequential', res)
+	return res[res.length - 1];
 }

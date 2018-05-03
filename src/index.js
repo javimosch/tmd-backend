@@ -26,12 +26,14 @@ var mongo_express_config = require('./config/mongoExpress');
 
 	var server = require('http').Server(app);
 
+	await db.connect(app);
+
 	require('./modules/sockets').default(server);
 		
 	var cors = require('cors')
 	app.use(cors())
 	
-	await db.connect(app);
+	
 
 	//await db.conn().model('field').migratePropertyFromJSON('group');
 	await dbStartHook();
@@ -60,6 +62,13 @@ var mongo_express_config = require('./config/mongoExpress');
 	
 
 	configureFacebookMenssengerWebhook(app);
+
+	app.post('/redirect', (req,res)=>{
+		res.redirect('http://localhost:5000/rpc')
+	});
+
+	const fileUpload = require('express-fileupload');
+	app.use(fileUpload());
 
 	app.post('/client/:client', apiAction.handleClient());
 	
