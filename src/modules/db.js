@@ -4,7 +4,7 @@ import path from 'path';
 import fs from 'fs';
 var mongodbUri = require('mongodb-uri');
 
-var morgan = require('mongoose-morgan');
+
 
 if (process.env.NODE_ENV !== 'production') {
 	mongoose.set('debug', true);
@@ -21,7 +21,6 @@ var self = module.exports = {
 			name: 'default',
 			models: null
 		});
-		//bindMorganLogging(app)
 	},
 	conn: () => self.connections.default,
 	get: (n) => self.connections[n] || null,
@@ -42,19 +41,6 @@ var self = module.exports = {
 			}
 		})
 	}
-}
-
-function bindMorganLogging(app) {
-	app.use(morgan({
-			collection: 'morgan_logs',
-			connectionString: URI,
-		}, {
-			skip: function(req, res) {
-				return res.statusCode !== 500;
-			}
-		},
-		'dev'
-	));
 }
 
 function connectMongoose(options = {}) {

@@ -1,3 +1,10 @@
+const mongoosePaginate = require('mongoose-paginate');
+
+export function configure(schema){
+	  schema.statics.findPaginate = createPaginationMethod()
+  	  schema.plugin(mongoosePaginate);
+}
+
 export function createPaginationMethod() {
 	return function(query = {}, offset = 0, limit = 500, options = {}) {
 		try{

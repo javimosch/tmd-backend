@@ -28,6 +28,8 @@ var mongo_express_config = require('./config/mongoExpress');
 
 	await db.connect(app);
 
+	await require('./modules/models').load()
+
 	require('./modules/sockets').default(server);
 		
 	var cors = require('cors')

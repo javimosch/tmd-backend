@@ -10,7 +10,9 @@ import * as babel from 'babel-core';
 import middlewares from './apiActionMiddlewares'
 import _ from 'lodash';
 import moment from 'moment';
-import {execute as executeActionWithWorker} from './worker'
+import {
+	execute as executeActionWithWorker
+} from './worker'
 
 const console = require('tracer').colorConsole();
 var beautify = require('js-beautify').js_beautify;
@@ -29,7 +31,7 @@ let state = {
 
 let m = null
 async function getModules() {
-	if(m) return m;
+	if (m) return m;
 	if (_.keys(state.modules).length > 0) return state.modules;
 	let dirs = await sander.readdir(path.join(__dirname))
 	//d.indexOf('apiAction.js') === -1 &&
@@ -65,16 +67,16 @@ function sendBadActionImplementation(msg, res) {
 }
 
 function sendServerError(err, res) {
-	if(!err){
+	if (!err) {
 		err = new Error('UNDEFINED_ERROR')
 	}
-	if(!err.messag&&!err.stack){
+	if (!err.messag && !err.stack) {
 		err = new Error(JSON.stringify({
-			message:"UNKNOWN_ERROR",
+			message: "UNKNOWN_ERROR",
 			details: err
-		},null,2))
+		}, null, 2))
 	}
-	console.error('SERVER ERROR',err.message,err.stack)
+	console.error('SERVER ERROR', err.message, err.stack)
 	let errObject = errToJSON(err);
 	if (process.env.ERRORS_RES_MODE === 'message') {
 		errObject = {
@@ -102,56 +104,56 @@ export function handleClient() {
 
 			if (!payload.n) return sendBadParam('404', res)
 			if (!payload.d) return sendBadParam('404', res)
-			
+
 			let actionScope = await getActionScope(req)
 
-			
+
 			await middlewares.run({
 				name: payload.n
-			},{
+			}, {
 				middlewares: [{
-					name:'authenticateSilent',
-					params:[{
-						model:'tae_user'
+					name: 'authenticateSilent',
+					params: [{
+						model: 'tae_user'
 					}]
 				}]
-			},actionScope,payload.d)
+			}, actionScope, payload.d)
 
-			
+
 
 			var actionQueryPayload = {
 				name: payload.n
 			};
 
-			if(req.user){
+			if (req.user) {
 
-				if(!payload.d.$project){
+				if (!payload.d.$project) {
 					throw new Error('PROJECT_REQUIRED')
 				}
 
-				if(req.user.role === 'normal'){
+				if (req.user.role === 'normal') {
 					actionQueryPayload.owner = req.user._id
 					actionQueryPayload.project = payload.d.$project
-				}else{
+				} else {
 					actionQueryPayload.project = payload.d.$project
 				}
-			}else{
+			} else {
 				let project = await WraProject.findOne({
-					apiKey 
+					apiKey
 				}).select('_id').exec()
-				if(!project){
+				if (!project) {
 					throw new Error('INVALID_API_KEY')
-				}else{
+				} else {
 					actionQueryPayload.project = project._id
 				}
 			}
 
 			let action = await WraAction.findOne(actionQueryPayload).exec();
-			
-			
+
+
 			if (!action) return sendServerError(new Error('ACTION_MISMATCH'), res)
-			
-				/*
+
+			/*
 			if (!action.compiledAt || action.updatedAt > action.compiledAt) {
 				await compileActions([action]);
 			}
@@ -167,9 +169,9 @@ export function handleClient() {
 			let actionPromise = def.default.apply({}, [payload.d])
 			if (!actionPromise.then) return sendBadParam('ACTION_PROMISE_REQUIRED', res)
 				*/
-			
+
 			//let result = await actionPromise
-			let result = await executeActionWithWorker(action,payload.d)
+			let result = await executeActionWithWorker(action, payload.d)
 
 			sendSuccess(result, res)
 		})().catch(err => sendServerError(err, res))
@@ -182,24 +184,24 @@ export function handler() {
 
 		if (!payload.n) return sendBadParam('Action name required (n)', res);
 		if (!payload.d) return sendBadParam('Action data required (d)', res);
-		
-		if (typeof payload.d !== 'object'){
-			try{
+
+		if (typeof payload.d !== 'object') {
+			try {
 				payload.d = JSON.parse(payload.d)
-			}catch(err){
-				return sendBadParam('Action data type mismatch (object expected)', res);	
+			} catch (err) {
+				return sendBadParam('Action data type mismatch (object expected)', res);
 			}
 		}
 
 		//multipart data key support
 		var multipartData = {}
-		for(var x in payload){
-			if(x.indexOf('d.')!==-1){
-				multipartData[x.replace('d.','')]=payload[x]
+		for (var x in payload) {
+			if (x.indexOf('d.') !== -1) {
+				multipartData[x.replace('d.', '')] = payload[x]
 			}
 		}
-		if(Object.keys(multipartData).length>0){
-			payload.d = Object.assign({},multipartData, payload.d)
+		if (Object.keys(multipartData).length > 0) {
+			payload.d = Object.assign({}, multipartData, payload.d)
 		}
 
 		let doc = null; //state.docs.filter(d => d.name == payload.n)[0];
@@ -216,33 +218,38 @@ export function handler() {
 		console.info(`Action ${payload.n} should compile? ${fd(doc.updatedAt)}>${fd(doc.compiledAt)}`)
 
 		if (!doc.compiledAt) {
-			await compileActions([doc]);	
-		}else{
-			if(doc.updatedAt > doc.compiledAt){
-				await compileActions([doc]);	
+			await compileActions([doc]);
+		} else {
+			if (doc.updatedAt > doc.compiledAt) {
+				await compileActions([doc]);
 			}
 		}
-		if(!doc.compiledCode){
+		if (!doc.compiledCode) {
 			await compileActions([doc]);
 		}
 
-		if (!doc.compiledCode) return sendServerError(doc.err||new Error('FUNCTION_COMPILE_ERROR'),res)
+		if (!doc.compiledCode) return sendServerError(doc.err || new Error('FUNCTION_COMPILE_ERROR'), res)
 
-		let def = requireFromString(doc.compiledCode);
+		var def
+		try {
+			def = requireFromString(doc.compiledCode);
+		} catch (err) {
+			console.error(err.stack)
+			return sendServerError(new Error('FUNCTION_REQUIRE_ERROR'), res)
+		}
 
 		const functionScope = await getActionScope(req)
 
 		//middlewares
 		if (def.middlewares) {
 			try {
-				console.trace('HAS_REQ?', !!functionScope.req)
 				await middlewares.run(doc, def, functionScope, payload.d);
 			} catch (err) {
-				console.warn('Action', doc.name, 'middleware exit')
+				//console.warn('Action', doc.name, 'middleware exit')
 				return sendServerError(err, res);
 			}
 		} else {
-			console.info('Runing', doc.name, 'without middlewares')
+			//console.info('Runing', doc.name, 'without middlewares')
 		}
 
 		let p = def.default.apply(functionScope, [payload.d])
@@ -266,35 +273,40 @@ export function handler() {
 }
 
 async function getActionScope(req) {
-	var scope =  {
+	var scope = {
+		requireFromString,
+		errToJSON,
+		babel,
+		_,
+		lodash: _,
 		model: (n) => db.conn().model(n),
 		db,
 		sequential,
-		req:req,
+		req: req,
 		config,
 		modules: await getModules(),
 		call: function(n, p) {
-			return call.apply({}, [n, getArgumentsShifted(arguments,1), req])
+			return call.apply({}, [n, getArgumentsShifted(arguments, 1), req])
 		},
 		callAction: function(n, p) {
-			return call.apply({}, [n, getArgumentsShifted(arguments,1), req])
+			return call.apply({}, [n, getArgumentsShifted(arguments, 1), req])
 		}
 	};
-	console.trace('getActionScope',!!scope.req, Object.keys(scope))
+	console.trace('getActionScope', !!scope.req, Object.keys(scope))
 	return scope;
 }
 
-function getArgumentsShifted(args, positions){
+function getArgumentsShifted(args, positions) {
 	let result = Array.prototype.slice.call(args)
-	for(var x = 0; x<positions;x++){
+	for (var x = 0; x < positions; x++) {
 		result.shift()
 	}
 	return result;
 }
 
-export async function call(name, params,req) {
-	if(!(params instanceof Array)) throw new Error('call params should be Array')
-	if(!req) throw new Error('Express Request (req) expected')
+export async function call(name, params, req) {
+	if (!(params instanceof Array)) throw new Error('call params should be Array')
+	if (!req) throw new Error('Express Request (req) expected')
 	var doc = await db.conn().model('api_action').findOne({
 		name: name
 	}).exec();
@@ -399,7 +411,7 @@ export async function compileActions(docs) {
 				code = (await babel.transform(d.code, {
 					minified: false,
 					babelrc: false,
-					sourceMaps:'inline',
+					sourceMaps: 'inline',
 					presets: [
 						["env", {
 							"targets": {
